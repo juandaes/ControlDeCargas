@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1E6B45">
+<title>Control de Cargas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<style>
+  :root{
+    --bg:#EEF2EF;--surface:#FFFFFF;--surface-2:#F5F8F6;--ink:#122019;--muted:#5A6B62;
+    --line:#D5DFD9;--brand:#1E6B45;--brand-deep:#134C30;--ok:#2E7D4F;--warn:#B7791F;--bad:#C0492C;--accent:#E0A431;
+    --chip:#E3F0E8;--banner-bg:#FDF3E3;--banner-line:#EAD5A8;--banner-ink:#7a5a15;
+    --shadow:0 1px 2px rgba(18,32,25,.06), 0 8px 24px rgba(18,32,25,.05);
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0F1613;--surface:#17201C;--surface-2:#1C2722;--ink:#E4EEE8;--muted:#9AABA2;
+      --line:#2A3832;--brand:#3FA772;--brand-deep:#7FD3A6;--ok:#5CC48A;--warn:#E3B04B;--bad:#EE7A5E;
+      --chip:#1F3329;--banner-bg:#2B2416;--banner-line:#4E4024;--banner-ink:#EBD29A;
+      --shadow:0 1px 2px rgba(0,0,0,.3);
+      color-scheme:dark;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.45;-webkit-text-size-adjust:100%;padding-bottom:88px}
+  body.ro{padding-bottom:24px}
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px}
+  [hidden]{display:none!important}
+
+  header.top{background:linear-gradient(160deg,#1E6B45 0%,#134C30 100%);color:#fff;padding:22px 0 18px}
+  header.top .wrap{display:flex;flex-direction:column;gap:2px}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#BFE4CF}
+  header.top h1{margin:2px 0 0;font-size:20px;font-weight:800;letter-spacing:-.01em}
+  .conn{font-size:11px;font-weight:700;margin-top:6px;display:flex;align-items:center;gap:6px;color:#CDECDA}
+  .dot{width:8px;height:8px;border-radius:50%;background:#9fb;display:inline-block}
+  .dot.off{background:#f2b8a6}.dot.wait{background:#f3d58a}
+
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--line);padding:6px 0 max(6px,env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(18,32,25,.05)}
+  nav.tabs .wrap{display:flex;gap:4px}
+  nav.tabs button{flex:1;background:none;border:0;cursor:pointer;padding:8px 4px;border-radius:12px;color:var(--muted);font-family:var(--sans);font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px}
+  nav.tabs button .ico{font-size:19px;line-height:1}
+  nav.tabs button.active{color:var(--brand)}
+  body.ro nav.tabs{display:none}
+
+  main.wrap{padding-top:16px}
+  .view{display:none;animation:fade .18s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.view,.view.active{animation:none}}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+  .card h2{margin:0 0 12px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .muted{color:var(--muted)}
+  .small{font-size:12.5px}
+
+  .banner{background:var(--banner-bg);border:1px solid var(--banner-line);color:var(--banner-ink);border-radius:14px;padding:14px;margin-bottom:14px;font-size:13.5px;line-height:1.5}
+  .banner code{font-family:var(--mono);font-size:12px}
+
+  .hero{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .hero .label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .hero .amount{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:28px;font-weight:700;color:var(--brand-deep);letter-spacing:-.02em}
+  .hero .sub{font-size:13px;color:var(--muted);font-weight:600}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+
+  label.f{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.05em}
+  input,select,textarea{width:100%;font-family:var(--sans);font-size:16px;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;outline:none;min-height:46px}
+  textarea{min-height:120px;font-size:14px;resize:vertical}
+  input.num-in{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(30,107,69,.16)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row2 > div{min-width:0}
+  .kwh-row{display:grid;grid-template-columns:1fr auto;gap:10px}
+  .check{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;margin-top:12px;cursor:pointer}
+  .check input{width:20px;height:20px;min-height:0;accent-color:var(--brand)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:var(--brand);color:#fff;border-radius:12px;font-family:var(--sans);font-size:15px;font-weight:800;padding:12px 16px;cursor:pointer;min-height:46px}
+  .btn:active{filter:brightness(.92)}
+  .btn.block{width:100%;margin-top:16px}
+  .btn.ghost{background:transparent;color:var(--brand);border:1.5px solid var(--line)}
+  .btn.danger{background:transparent;color:var(--bad);border:1.5px solid var(--line)}
+  .btn.sm{font-size:12.5px;padding:8px 11px;min-height:38px;border-radius:10px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn-row .btn{flex:1 1 auto}
+
+  .item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed var(--line)}
+  .item:last-child{border-bottom:0}
+  .item .main{flex:1;min-width:0}
+  .item .t1{font-weight:700;font-size:14.5px}
+  .item .t2{font-size:12.5px;color:var(--muted)}
+  .item .kwh{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;white-space:nowrap}
+  .icon-btn{border:0;background:var(--surface-2);color:var(--muted);width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:15px;flex:none}
+  .item input[type=checkbox]{width:22px;height:22px;min-height:0;flex:none;accent-color:var(--brand)}
+
+  .badge{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+  .badge.ok{background:rgba(46,125,79,.14);color:var(--ok)}
+  .badge.warn{background:rgba(183,121,31,.15);color:var(--warn)}
+
+  .liq{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;background:var(--surface-2)}
+  .liq-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .liq-head .val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:700;color:var(--brand-deep);white-space:nowrap}
+  .liq-meta{font-size:12.5px;color:var(--muted);margin-top:4px}
+  details summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--brand);margin-top:10px}
+  table.det{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+  table.det th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:6px 4px;border-bottom:1px solid var(--line)}
+  table.det td{padding:7px 4px;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums}
+  table.det td.r,table.det th.r{text-align:right}
+  table.det tfoot td{font-weight:800;border-bottom:0}
+  .pay-form{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{border:1.5px solid var(--brand);background:var(--chip);color:var(--ink);border-radius:999px;padding:9px 14px;font-family:var(--mono);font-size:16px;font-weight:700;cursor:pointer}
+  .chip.best{background:var(--brand);color:#fff}
+
+  .modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:var(--surface);width:100%;max-width:640px;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px max(18px,env(safe-area-inset-bottom))}
+  .sheet h3{margin:0 0 6px;font-size:17px}
+  .crop-wrap{display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden;margin-top:10px}
+  #ocr-canvas{display:block;max-width:100%;max-height:52vh;touch-action:none;cursor:crosshair}
+  #ocr-status{font-size:13px;color:var(--muted);margin-top:10px;min-height:18px}
+
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:#122019;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:80;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .empty{color:var(--muted);font-size:14px;padding:6px 0}
+  @media (prefers-color-scheme:dark){.toast{background:#E4EEE8;color:#122019}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="eyebrow">Control de cargas ⚡</span>
+    <h1 id="app-title">Cargas</h1>
+    <span class="conn"><span id="conn-dot" class="dot wait"></span><span id="conn-txt">Conectando…</span></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="config-banner" hidden></div>
+
+  <!-- ===================== CARGAS ===================== -->
+  <section class="view active" id="view-cargas">
+    <div class="card">
+      <h2><span id="form-title">Nueva carga</span></h2>
+      <div class="row2">
+        <div><label class="f" for="c-fecha">Fecha</label><input type="date" id="c-fecha"></div>
+        <div><label class="f" for="c-pct">% batería al iniciar</label><input type="number" id="c-pct" class="num-in" min="0" max="100" inputmode="numeric" placeholder="45"></div>
+      </div>
+      <div class="row2">
+        <div><label class="f" for="c-hi">Hora inicio</label><input type="time" id="c-hi"></div>
+        <div><label class="f" for="c-hf">Hora fin</label><input type="time" id="c-hf"></div>
+      </div>
+      <label class="f" for="c-kwh">Total kWh (del cargador)</label>
+      <div class="kwh-row">
+        <input type="text" id="c-kwh" class="num-in" inputmode="decimal" placeholder="13.83" autocomplete="off">
+        <button class="btn ghost" data-act="photo" title="Leer de una foto">📷 Foto</button>
+      </div>
+      <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+      <div class="btn-row">
+        <button class="btn" data-act="save-carga" id="save-carga-btn">Guardar carga</button>
+        <button class="btn ghost" data-act="cancel-edit" id="cancel-edit-btn" hidden>Cancelar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Pendientes por liquidar <span class="num" id="pend-total"></span></h2>
+      <div id="pend-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>Últimas cargas liquidadas</h2>
+      <div id="done-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== LIQUIDAR ===================== -->
+  <section class="view" id="view-liquidar">
+    <div class="card">
+      <h2>Liquidar cargas <button class="btn ghost sm" data-act="sel-all">Todas / ninguna</button></h2>
+      <div id="liq-sel-list"></div>
+    </div>
+    <div class="card">
+      <label class="f" for="l-tarifa" style="margin-top:0">Tarifa (COP por kWh)</label>
+      <input type="text" id="l-tarifa" class="num-in" inputmode="decimal" placeholder="0">
+      <div class="divider"></div>
+      <div class="hero">
+        <div><div class="label">Valor a pagar</div><div class="sub" id="l-resumen">—</div></div>
+        <div class="amount" id="l-valor">$0</div>
+      </div>
+      <button class="btn block" data-act="create-liq" id="create-liq-btn">Crear liquidación</button>
+    </div>
+  </section>
+
+  <!-- ===================== PAGOS ===================== -->
+  <section class="view" id="view-pagos">
+    <div class="card">
+      <div class="hero">
+        <div><div class="label">Pendiente de pago</div><div class="sub" id="p-sub">—</div></div>
+        <div class="amount" id="p-total">$0</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Liquidaciones</h2>
+      <div id="liq-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== AJUSTES ===================== -->
+  <section class="view" id="view-ajustes">
+    <div class="card">
+      <h2>General</h2>
+      <label class="f" for="s-titulo" style="margin-top:0">Título</label>
+      <input type="text" id="s-titulo" placeholder="Cargas donde Victor">
+      <label class="f" for="s-prov">¿A quién le pagas?</label>
+      <input type="text" id="s-prov" placeholder="Victor">
+      <label class="f" for="s-tarifa">Tarifa por defecto (COP por kWh)</label>
+      <input type="text" id="s-tarifa" class="num-in" inputmode="decimal" placeholder="0">
+      <button class="btn block" data-act="save-config">Guardar</button>
+    </div>
+
+    <div class="card">
+      <h2>Enlace de solo lectura</h2>
+      <p class="small muted" style="margin-top:0">Quien abra este enlace ve el estado de cuenta y las liquidaciones, sin botones para editar.</p>
+      <button class="btn ghost block" style="margin-top:4px" data-act="copy-estado">🔗 Copiar enlace del estado de cuenta</button>
+    </div>
+
+    <div class="card">
+      <h2>Importar desde la nota</h2>
+      <p class="small muted" style="margin-top:0">Pega las líneas de tu nota, una carga por línea. Ejemplo:<br><code class="num">25/09/2026 - inicia 10.20 55% - fin 13.00 total 13.83 Kwh</code></p>
+      <textarea id="imp-text" placeholder="Pega aquí…"></textarea>
+      <label class="check"><input type="checkbox" id="imp-paid"> Estas cargas ya están pagadas</label>
+      <div class="small muted" id="imp-preview" style="margin-top:8px"></div>
+      <button class="btn block" data-act="import-notes">Importar</button>
+    </div>
+
+    <div class="card">
+      <h2>Respaldo</h2>
+      <button class="btn ghost block" style="margin-top:0" data-act="export">⬇️ Descargar copia (JSON)</button>
+    </div>
+  </section>
+
+  <!-- ===================== SOLO LECTURA ===================== -->
+  <section class="view" id="view-estado"></section>
+</main>
+
+<nav class="tabs">
+  <div class="wrap">
+    <button data-view="cargas" class="active"><span class="ico">⚡</span>Cargas</button>
+    <button data-view="liquidar"><span class="ico">🧾</span>Liquidar</button>
+    <button data-view="pagos"><span class="ico">✅</span>Pagos</button>
+    <button data-view="ajustes"><span class="ico">⚙️</span>Ajustes</button>
+  </div>
+</nav>
+
+<div id="ocr-modal" class="modal" hidden>
+  <div class="sheet">
+    <h3>Leer kWh de la foto</h3>
+    <div class="small muted">Arrastra un recuadro sobre la pantalla del cargador (o solo sobre el número de kWh). La foto no se guarda: se descarta al cerrar.</div>
+    <div class="crop-wrap"><canvas id="ocr-canvas" width="0" height="0"></canvas></div>
+    <div id="ocr-status"></div>
+    <div id="ocr-results"></div>
+    <div class="btn-row">
+      <button class="btn ghost" data-act="ocr-close">Cerrar</button>
+      <button class="btn" data-act="ocr-run" id="ocr-run-btn">Leer kWh</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script type="module">
+/* ============================================================
+   CONFIGURACIÓN DE FIREBASE
+   Es el mismo proyecto de CuentasCompartidas; los datos de esta
+   app van en otra ruta (BASE), así que no se mezclan.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCF7x2Id9AdqzoCxOez_S6ETkms5m42P84",
+  authDomain: "cuentas-compartidas-c8e5e.firebaseapp.com",
+  databaseURL: "https://cuentas-compartidas-c8e5e-default-rtdb.firebaseio.com",
+  projectId: "cuentas-compartidas-c8e5e",
+  storageBucket: "cuentas-compartidas-c8e5e.firebasestorage.app",
+  messagingSenderId: "897226912321",
+  appId: "1:897226912321:web:4097b511bbe22b0f590cc0"
+};
+const BASE = "cargas/main";
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { getDatabase, ref, onValue, set, push, remove, update } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
+
+const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+
+const $ = s => document.querySelector(s);
+let db = null, ready = false;
+let state = { config:{ titulo:"Cargas donde Victor", proveedor:"Victor", tarifa:0 }, cargas:[], liqs:[] };
+let editingId = null;
+const selection = {};            // id de carga -> true/false en "Liquidar"
+const params = new URLSearchParams(location.search);
+const RO_LIQ = params.get("liq");
+const RO_ESTADO = params.has("estado");
+const READ_ONLY = !!(RO_LIQ || RO_ESTADO);
+
+/* ---------- utilidades ---------- */
+const today = () => { const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const fmtDate = iso => iso ? iso.split("-").reverse().join("/") : "—";
+const money = n => "$" + new Intl.NumberFormat("es-CO",{maximumFractionDigits:0}).format(Math.round(n||0));
+const kwhFmt = n => new Intl.NumberFormat("es-CO",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);
+const round2 = n => Math.round((n||0)*100)/100;
+function parseSmart(s){
+  s=String(s??"").trim().replace(/\s/g,""); if(s==="")return NaN;
+  s=s.replace(/^\$/,"");
+  if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s=s.replace(/\./g,"").replace(",",".");   // 1.000 o 1.250,5
+  else if(/,\d{1,2}$/.test(s)) s=s.replace(/\./g,"").replace(",",".");
+  else s=s.replace(/,/g,"");
+  const n=parseFloat(s); return isNaN(n)?NaN:n;
+}
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2600);}
+function conn(s,txt){$("#conn-dot").className="dot"+(s==="on"?"":s==="off"?" off":" wait");$("#conn-txt").textContent=txt;}
+function minutesOf(t){ if(!t)return null; const [h,m]=t.split(":").map(Number); return h*60+m; }
+function addDuration(hhmm, durMin){ const t=(minutesOf(hhmm)+durMin)%(24*60); return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0"); }
+function durText(hi,hf){
+  const a=minutesOf(hi), b=minutesOf(hf); if(a==null||b==null)return "";
+  let d=b-a; if(d<0)d+=1440; return `${Math.floor(d/60)}h ${String(d%60).padStart(2,"0")}m`;
+}
+const byFecha = (a,b) => (a.fecha||"").localeCompare(b.fecha||"") || (a.hi||"").localeCompare(b.hi||"");
+const pendientes = () => state.cargas.filter(c=>!c.liqId).sort(byFecha);
+function periodo(det){ if(!det||!det.length)return "—"; const s=[...det].sort(byFecha); const a=fmtDate(s[0].fecha), b=fmtDate(s[s.length-1].fecha); return a===b?a:`${a} – ${b}`; }
+function needDb(){ if(!ready){toast("Aún no hay conexión con la base de datos");return false;} return true; }
+function fail(e){ console.error(e); toast("No se pudo guardar: "+(e.code||e.message)); }
+function linkFor(q){ return location.origin+location.pathname+q; }
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast("Enlace copiado"); }catch(e){ prompt("Copia el enlace:",t); } }
+
+/* ---------- vistas ---------- */
+function switchView(v){
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
+  window.scrollTo({top:0});
+}
+
+function renderAll(){
+  $("#app-title").textContent = state.config.titulo || "Cargas";
+  document.title = (state.config.titulo || "Control de Cargas");
+  if(READ_ONLY){ renderEstado(); return; }
+  renderCargas(); renderLiquidar(); renderPagos(); renderAjustes();
+}
+
+function cargaLine(c){
+  const parts=[];
+  if(c.hi) parts.push(c.hf ? `${c.hi} → ${c.hf}` : `inicio ${c.hi}`);
+  if(c.pct!=null && c.pct!=="") parts.push(`${c.pct}%`);
+  const d=durText(c.hi,c.hf); if(d) parts.push(d);
+  return parts.join(" · ");
+}
+
+function renderCargas(){
+  const pend=pendientes();
+  const total=round2(pend.reduce((s,c)=>s+(c.kwh||0),0));
+  const tarifa=Number(state.config.tarifa)||0;
+  $("#pend-total").textContent = pend.length ? `${kwhFmt(total)} kWh${tarifa?" · "+money(total*tarifa):""}` : "";
+  $("#pend-list").innerHTML = pend.length ? [...pend].reverse().map(c=>`
+    <div class="item">
+      <div class="main"><div class="t1">${fmtDate(c.fecha)}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div>
+      <div class="kwh">${kwhFmt(c.kwh)} kWh</div>
+      <button class="icon-btn" data-act="edit-carga" data-id="${c.id}" title="Editar">✎</button>
+      <button class="icon-btn" data-act="del-carga" data-id="${c.id}" title="Eliminar">✕</button>
+    </div>`).join("") : `<div class="empty">No hay cargas pendientes.</div>`;
+  const done=state.cargas.filter(c=>c.liqId).sort(byFecha).reverse().slice(0,8);
+  $("#done-list").innerHTML = done.length ? done.map(c=>{
+    const l=state.liqs.find(x=>x.id===c.liqId);
+    const b=l&&l.pagada?`<span class="badge ok">Pagada</span>`:`<span class="badge warn">Por pagar</span>`;
+    return `<div class="item"><div class="main"><div class="t1">${fmtDate(c.fecha)} ${b}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div><div class="kwh">${kwhFmt(c.kwh)} kWh</div></div>`;
+  }).join("") : `<div class="empty">Todavía no hay liquidaciones.</div>`;
+}
+
+function selectedPend(){ return pendientes().filter(c=>selection[c.id]!==false); }
+function renderLiquidar(){
+  const pend=pendientes();
+  $("#liq-sel-list").innerHTML = pend.length ? pend.map(c=>`
+    <label class="item" style="cursor:pointer">
+      <input type="checkbox" data-sel="${c.id}" ${selection[c.id]!==false?"checked":""}>
+      <div class="main"><div class="t1">${fmtDate(c.fecha)}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div>
+      <div class="kwh">${kwhFmt(c.kwh)} kWh</div>
+    </label>`).join("") : `<div class="empty">No hay cargas pendientes por liquidar.</div>`;
+  const tin=$("#l-tarifa");
+  if(document.activeElement!==tin && !tin.dataset.touched) tin.value = state.config.tarifa || "";
+  updateLiqSummary();
+}
+function updateLiqSummary(){
+  const sel=selectedPend();
+  const kwh=round2(sel.reduce((s,c)=>s+(c.kwh||0),0));
+  const tarifa=parseSmart($("#l-tarifa").value)||0;
+  $("#l-valor").textContent=money(kwh*tarifa);
+  $("#l-resumen").textContent = sel.length ? `${sel.length} carga${sel.length>1?"s":""} · ${kwhFmt(kwh)} kWh × ${money(tarifa)}` : "Selecciona cargas";
+  $("#create-liq-btn").disabled = !sel.length || !tarifa;
+}
+
+function liqTable(l){
+  const det=[...(l.detalle||[])].sort(byFecha);
+  return `<table class="det">
+    <thead><tr><th>Fecha</th><th>Inicio</th><th>%</th><th>Fin</th><th class="r">kWh</th></tr></thead>
+    <tbody>${det.map(c=>`<tr><td>${fmtDate(c.fecha)}</td><td>${escapeHtml(c.hi||"—")}</td><td>${c.pct!=null&&c.pct!==""?escapeHtml(c.pct)+"%":"—"}</td><td>${escapeHtml(c.hf||"—")}</td><td class="r num">${kwhFmt(c.kwh)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td colspan="4">Total</td><td class="r num">${kwhFmt(l.kwhTotal)}</td></tr></tfoot>
+  </table>`;
+}
+function liqCard(l, editable, open){
+  const badge = l.pagada ? `<span class="badge ok">Pagada ${fmtDate(l.fechaPago)}</span>` : `<span class="badge warn">Por pagar</span>`;
+  const ref_ = l.pagada && l.referencia ? ` · Ref. ${escapeHtml(l.referencia)}` : "";
+  let actions = `<div class="btn-row">
+      <button class="btn sm" data-act="share-img" data-id="${l.id}">📤 Compartir imagen</button>
+      ${editable?`<button class="btn ghost sm" data-act="copy-liq" data-id="${l.id}">🔗 Enlace</button>`:""}
+    </div>`;
+  if(editable){
+    actions += l.pagada
+      ? `<div class="btn-row"><button class="btn ghost sm" data-act="unpay" data-id="${l.id}">Marcar como no pagada</button></div>`
+      : `<div class="pay-form" id="pf-${l.id}" hidden>
+           <div class="row2">
+             <div><label class="f" for="pf-date-${l.id}">Fecha de pago</label><input type="date" id="pf-date-${l.id}" value="${today()}"></div>
+             <div><label class="f" for="pf-ref-${l.id}">Referencia (opcional)</label><input type="text" id="pf-ref-${l.id}" placeholder="N.º transferencia"></div>
+           </div>
+           <div class="btn-row"><button class="btn sm" data-act="confirm-pay" data-id="${l.id}">Confirmar pago</button></div>
+         </div>
+         <div class="btn-row">
+           <button class="btn ghost sm" data-act="pay" data-id="${l.id}">✅ Registrar pago</button>
+           <button class="btn danger sm" data-act="del-liq" data-id="${l.id}">Deshacer liquidación</button>
+         </div>`;
+  }
+  return `<div class="liq">
+    <div class="liq-head">
+      <div><div style="font-weight:800">${periodo(l.detalle)}</div><div style="margin-top:4px">${badge}</div></div>
+      <div class="val">${money(l.valor)}</div>
+    </div>
+    <div class="liq-meta">${(l.detalle||[]).length} cargas · ${kwhFmt(l.kwhTotal)} kWh × ${money(l.tarifa)}/kWh${ref_}</div>
+    <details ${open?"open":""}><summary>Ver detalle</summary>${liqTable(l)}</details>
+    ${actions}
+  </div>`;
+}
+function renderPagos(){
+  const unpaid=state.liqs.filter(l=>!l.pagada);
+  $("#p-total").textContent=money(unpaid.reduce((s,l)=>s+(l.valor||0),0));
+  $("#p-sub").textContent = unpaid.length ? `${unpaid.length} liquidación${unpaid.length>1?"es":""} por pagar` : "Todo al día";
+  const openPf = [...document.querySelectorAll(".pay-form:not([hidden])")].map(e=>e.id);
+  $("#liq-list").innerHTML = state.liqs.length ? state.liqs.map(l=>liqCard(l,true,false)).join("") : `<div class="empty">Aún no has creado liquidaciones.</div>`;
+  openPf.forEach(id=>{const e=document.getElementById(id); if(e)e.hidden=false;});
+}
+
+function renderAjustes(){
+  const c=state.config;
+  if(!$("#s-titulo").dataset.touched) $("#s-titulo").value=c.titulo||"";
+  if(!$("#s-prov").dataset.touched) $("#s-prov").value=c.proveedor||"";
+  if(!$("#s-tarifa").dataset.touched) $("#s-tarifa").value=c.tarifa||"";
+}
+
+/* ---------- vista de solo lectura ---------- */
+function renderEstado(){
+  const v=$("#view-estado");
+  if(RO_LIQ){
+    const l=state.liqs.find(x=>x.id===RO_LIQ);
+    v.innerHTML = l ? `<div class="card"><h2>Liquidación · ${escapeHtml(state.config.proveedor||"")}</h2>${liqCard(l,false,true)}</div>`
+                    : `<div class="card"><div class="empty">${ready?"Esta liquidación no existe o fue eliminada.":"Cargando…"}</div></div>`;
+    return;
+  }
+  const unpaid=state.liqs.filter(l=>!l.pagada);
+  const pend=pendientes(); const pk=round2(pend.reduce((s,c)=>s+(c.kwh||0),0));
+  const tarifa=Number(state.config.tarifa)||0;
+  v.innerHTML = `
+    <div class="card">
+      <div class="hero"><div><div class="label">Pendiente de pago</div><div class="sub">${unpaid.length?`${unpaid.length} liquidación${unpaid.length>1?"es":""}`:"Todo al día"}</div></div><div class="amount">${money(unpaid.reduce((s,l)=>s+(l.valor||0),0))}</div></div>
+      <div class="divider"></div>
+      <div class="small muted">Cargas aún sin liquidar: <b class="num">${pend.length}</b> · <b class="num">${kwhFmt(pk)} kWh</b>${tarifa?` (≈ ${money(pk*tarifa)})`:""}</div>
+    </div>
+    ${pend.length?`<div class="card"><h2>Cargas sin liquidar</h2>${pend.map(c=>`<div class="item"><div class="main"><div class="t1">${fmtDate(c.fecha)}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div><div class="kwh">${kwhFmt(c.kwh)} kWh</div></div>`).join("")}</div>`:""}
+    <div class="card"><h2>Liquidaciones</h2>${state.liqs.length?state.liqs.map(l=>liqCard(l,false,false)).join(""):`<div class="empty">Sin liquidaciones.</div>`}</div>`;
+}
+
+/* ---------- acciones: cargas ---------- */
+function resetForm(){
+  editingId=null;
+  $("#c-fecha").value=today(); ["#c-hi","#c-hf","#c-pct","#c-kwh"].forEach(s=>$(s).value="");
+  $("#form-title").textContent="Nueva carga"; $("#save-carga-btn").textContent="Guardar carga"; $("#cancel-edit-btn").hidden=true;
+}
+async function saveCarga(){
+  if(!needDb())return;
+  const fecha=$("#c-fecha").value, kwh=parseSmart($("#c-kwh").value);
+  const pctRaw=$("#c-pct").value.trim();
+  if(!fecha){toast("Falta la fecha");return;}
+  if(!(kwh>0)){toast("Escribe el total de kWh");$("#c-kwh").focus();return;}
+  if(kwh>150){toast("Ese valor de kWh parece demasiado alto");return;}
+  const pct = pctRaw===""?null:Math.max(0,Math.min(100,parseInt(pctRaw,10)));
+  const data={fecha, hi:$("#c-hi").value||null, hf:$("#c-hf").value||null, pct, kwh:round2(kwh)};
+  try{
+    if(editingId){
+      const prev=state.cargas.find(c=>c.id===editingId);
+      if(prev&&prev.liqId){toast("Esta carga ya está liquidada");return;}
+      await update(ref(db,`${BASE}/cargas/${editingId}`),data);
+      toast("Carga actualizada");
+    }else{
+      await push(ref(db,`${BASE}/cargas`),{...data, liqId:null, createdAt:Date.now()});
+      toast(`Carga guardada · ${kwhFmt(data.kwh)} kWh`);
+    }
+    resetForm();
+  }catch(e){fail(e);}
+}
+function editCarga(id){
+  const c=state.cargas.find(x=>x.id===id); if(!c)return;
+  editingId=id;
+  $("#c-fecha").value=c.fecha||""; $("#c-hi").value=c.hi||""; $("#c-hf").value=c.hf||"";
+  $("#c-pct").value=c.pct??""; $("#c-kwh").value=c.kwh??"";
+  $("#form-title").textContent="Editar carga"; $("#save-carga-btn").textContent="Guardar cambios"; $("#cancel-edit-btn").hidden=false;
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+async function delCarga(id){
+  if(!needDb())return;
+  const c=state.cargas.find(x=>x.id===id); if(!c)return;
+  if(!confirm(`¿Eliminar la carga del ${fmtDate(c.fecha)} (${kwhFmt(c.kwh)} kWh)?`))return;
+  try{ await remove(ref(db,`${BASE}/cargas/${id}`)); if(editingId===id)resetForm(); toast("Carga eliminada"); }catch(e){fail(e);}
+}
+
+/* ---------- acciones: liquidaciones ---------- */
+const snapshotOf = c => ({id:c.id, fecha:c.fecha, hi:c.hi||null, hf:c.hf||null, pct:c.pct??null, kwh:c.kwh});
+function buildLiq(cargas, tarifa, extra={}){
+  const kwhTotal=round2(cargas.reduce((s,c)=>s+(c.kwh||0),0));
+  return {creada:today(), createdAt:Date.now(), tarifa, kwhTotal, valor:Math.round(kwhTotal*tarifa),
+          detalle:cargas.map(snapshotOf), pagada:false, fechaPago:null, referencia:null, ...extra};
+}
+async function createLiq(){
+  if(!needDb())return;
+  const sel=selectedPend(); const tarifa=parseSmart($("#l-tarifa").value);
+  if(!sel.length){toast("Selecciona al menos una carga");return;}
+  if(!(tarifa>0)){toast("Escribe la tarifa por kWh");return;}
+  const liq=buildLiq(sel,tarifa);
+  if(!confirm(`Crear liquidación de ${sel.length} cargas: ${kwhFmt(liq.kwhTotal)} kWh × ${money(tarifa)} = ${money(liq.valor)}`))return;
+  const id=push(ref(db,`${BASE}/liquidaciones`)).key;
+  const upd={[`liquidaciones/${id}`]:liq};
+  sel.forEach(c=>upd[`cargas/${c.id}/liqId`]=id);
+  if(tarifa!==Number(state.config.tarifa)) upd["config/tarifa"]=tarifa;
+  try{
+    await update(ref(db,BASE),upd);
+    sel.forEach(c=>delete selection[c.id]);
+    delete $("#l-tarifa").dataset.touched;
+    toast("Liquidación creada"); switchView("pagos");
+  }catch(e){fail(e);}
+}
+async function confirmPay(id){
+  if(!needDb())return;
+  const fecha=$(`#pf-date-${id}`).value||today(); const referencia=$(`#pf-ref-${id}`).value.trim()||null;
+  try{ await update(ref(db,`${BASE}/liquidaciones/${id}`),{pagada:true,fechaPago:fecha,referencia}); toast("Pago registrado"); }catch(e){fail(e);}
+}
+async function unpay(id){
+  if(!needDb()||!confirm("¿Marcar esta liquidación como no pagada?"))return;
+  try{ await update(ref(db,`${BASE}/liquidaciones/${id}`),{pagada:false,fechaPago:null,referencia:null}); }catch(e){fail(e);}
+}
+async function delLiq(id){
+  if(!needDb())return;
+  const l=state.liqs.find(x=>x.id===id); if(!l)return;
+  if(!confirm("¿Deshacer esta liquidación? Sus cargas vuelven a quedar pendientes."))return;
+  const upd={[`liquidaciones/${id}`]:null};
+  state.cargas.filter(c=>c.liqId===id).forEach(c=>upd[`cargas/${c.id}/liqId`]=null);
+  try{ await update(ref(db,BASE),upd); toast("Liquidación deshecha"); }catch(e){fail(e);}
+}
+
+/* ---------- imagen para compartir ---------- */
+function drawStatement(l){
+  const det=[...(l.detalle||[])].sort(byFecha);
+  const W=1080, P=64, rowH=62;
+  const H=330 + 70 + det.length*rowH + 70 + 330;
+  const c=document.createElement("canvas"); c.width=W; c.height=H;
+  const x=c.getContext("2d");
+  const F='system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+  x.fillStyle="#F5F8F6"; x.fillRect(0,0,W,H);
+  const g=x.createLinearGradient(0,0,W,300); g.addColorStop(0,"#1E6B45"); g.addColorStop(1,"#134C30");
+  x.fillStyle=g; x.fillRect(0,0,W,290);
+  x.fillStyle="#BFE4CF"; x.font=`800 26px ${F}`; x.fillText("ESTADO DE CUENTA · CARGAS ⚡",P,84);
+  x.fillStyle="#fff"; x.font=`800 54px ${F}`; x.fillText(state.config.titulo||"Cargas",P,156);
+  x.font=`600 32px ${F}`; x.fillStyle="#E4F3EA"; x.fillText(`Periodo: ${periodo(det)}`,P,214);
+  x.font=`600 26px ${F}`; x.fillStyle="#BFE4CF"; x.fillText(`Liquidación del ${fmtDate(l.creada)}`,P,256);
+
+  let y=360;
+  const cols=[P, P+250, P+430, P+560, W-P];
+  x.font=`800 22px ${F}`; x.fillStyle="#5A6B62";
+  ["FECHA","INICIO","% INICIAL","FIN"].forEach((t,i)=>x.fillText(t,cols[i],y));
+  x.textAlign="right"; x.fillText("KWH",cols[4],y); x.textAlign="left";
+  y+=22; x.fillStyle="#D5DFD9"; x.fillRect(P,y,W-2*P,2); y+=10;
+  det.forEach((d,i)=>{
+    if(i%2===0){x.fillStyle="#EAF1ED";x.fillRect(P-12,y,W-2*P+24,rowH);}
+    x.fillStyle="#122019"; x.font=`600 30px ${F}`;
+    const ty=y+rowH/2+11;
+    x.fillText(fmtDate(d.fecha),cols[0],ty);
+    x.fillText(d.hi||"—",cols[1],ty);
+    x.fillText(d.pct!=null&&d.pct!==""?d.pct+"%":"—",cols[2],ty);
+    x.fillText(d.hf||"—",cols[3],ty);
+    x.textAlign="right"; x.font=`700 30px ui-monospace,Menlo,Consolas,monospace`; x.fillText(kwhFmt(d.kwh),cols[4],ty); x.textAlign="left";
+    y+=rowH;
+  });
+  y+=8; x.fillStyle="#122019"; x.fillRect(P,y,W-2*P,3); y+=50;
+  x.font=`800 32px ${F}`; x.fillText("Total kWh",P,y);
+  x.textAlign="right"; x.font=`800 32px ui-monospace,Menlo,Consolas,monospace`; x.fillText(kwhFmt(l.kwhTotal),W-P,y); x.textAlign="left";
+  y+=50; x.font=`600 28px ${F}`; x.fillStyle="#5A6B62"; x.fillText("Tarifa por kWh",P,y);
+  x.textAlign="right"; x.fillText(money(l.tarifa),W-P,y); x.textAlign="left";
+
+  y+=40; x.fillStyle="#fff"; roundRect(x,P-12,y,W-2*P+24,180,24); x.fill();
+  x.strokeStyle="#D5DFD9"; x.lineWidth=2; x.stroke();
+  x.fillStyle="#5A6B62"; x.font=`800 24px ${F}`; x.fillText("VALOR A PAGAR",P+16,y+52);
+  x.fillStyle="#134C30"; x.font=`800 72px ui-monospace,Menlo,Consolas,monospace`; x.fillText(money(l.valor),P+16,y+138);
+  x.textAlign="right";
+  if(l.pagada){ x.fillStyle="#2E7D4F"; x.font=`800 34px ${F}`; x.fillText("✔ PAGADO",W-P-16,y+70);
+    x.font=`600 24px ${F}`; x.fillText(fmtDate(l.fechaPago)+(l.referencia?` · Ref. ${l.referencia}`:""),W-P-16,y+110); }
+  else { x.fillStyle="#B7791F"; x.font=`800 34px ${F}`; x.fillText("PENDIENTE",W-P-16,y+70); }
+  x.textAlign="left";
+  x.fillStyle="#8A9A92"; x.font=`500 22px ${F}`; x.fillText(`${det.length} cargas · Generado el ${fmtDate(today())}`,P,H-40);
+  return c;
+}
+function roundRect(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+async function shareImg(id){
+  const l=state.liqs.find(x=>x.id===id); if(!l)return;
+  const canvas=drawStatement(l);
+  const blob=await new Promise(r=>canvas.toBlob(r,"image/png"));
+  const name=`liquidacion-cargas-${(l.creada||today())}.png`;
+  const file=new File([blob],name,{type:"image/png"});
+  const text=`Liquidación cargas ${periodo(l.detalle)}: ${kwhFmt(l.kwhTotal)} kWh × ${money(l.tarifa)} = ${money(l.valor)}\nDetalle: ${linkFor("?liq="+l.id)}`;
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], text}); return; }
+  }catch(e){ if(e.name==="AbortError")return; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast("Imagen descargada");
+}
+
+/* ---------- lectura de la foto (OCR en el teléfono) ---------- */
+const ocr = { src:null, crop:null, drag:null, worker:null, loading:null };
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=()=>rej(new Error("No se pudo cargar el lector"));document.head.appendChild(s);});}
+async function ensureWorker(){
+  if(ocr.worker)return ocr.worker;
+  if(!ocr.loading) ocr.loading=(async()=>{
+    if(!window.Tesseract) await loadScript(TESSERACT_URL);
+    const w=await Tesseract.createWorker("eng",1,{logger:m=>{ if(m.status&&m.status!=="recognizing text") ocrStatus("Preparando lector…"); }});
+    await w.setParameters({tessedit_char_whitelist:"0123456789.,:kWh", tessedit_pageseg_mode:"7"});
+    ocr.worker=w; return w;
+  })().catch(e=>{ocr.loading=null;throw e;});
+  return ocr.loading;
+}
+const ocrStatus = t => $("#ocr-status").textContent=t;
+
+async function openPhoto(file){
+  let bmp;
+  try{ bmp=await createImageBitmap(file,{imageOrientation:"from-image"}); }
+  catch(e){ bmp=await new Promise((res,rej)=>{const i=new Image();const u=URL.createObjectURL(file);i.onload=()=>{URL.revokeObjectURL(u);res(i);};i.onerror=rej;i.src=u;}); }
+  const max=2000, s=Math.min(1,max/Math.max(bmp.width,bmp.height));
+  const src=document.createElement("canvas"); src.width=Math.round(bmp.width*s); src.height=Math.round(bmp.height*s);
+  src.getContext("2d").drawImage(bmp,0,0,src.width,src.height);
+  if(bmp.close)bmp.close();
+  ocr.src=src; ocr.crop=null;
+  $("#ocr-results").innerHTML=""; ocrStatus("");
+  $("#ocr-modal").hidden=false;
+  drawOcrCanvas();
+  ensureWorker().catch(()=>{});      // precarga mientras eliges el recuadro
+}
+function drawOcrCanvas(){
+  const c=$("#ocr-canvas"), s=ocr.src; if(!s)return;
+  c.width=s.width; c.height=s.height;
+  const x=c.getContext("2d"); x.drawImage(s,0,0);
+  const r=ocr.crop; if(!r)return;
+  x.fillStyle="rgba(0,0,0,.5)";
+  x.fillRect(0,0,c.width,r.y); x.fillRect(0,r.y+r.h,c.width,c.height-r.y-r.h);
+  x.fillRect(0,r.y,r.x,r.h); x.fillRect(r.x+r.w,r.y,c.width-r.x-r.w,r.h);
+  x.strokeStyle="#5CF29A"; x.lineWidth=Math.max(3,c.width/250); x.strokeRect(r.x,r.y,r.w,r.h);
+}
+function canvasPoint(e){
+  const c=$("#ocr-canvas"), b=c.getBoundingClientRect();
+  return {x:Math.max(0,Math.min(c.width,(e.clientX-b.left)*c.width/b.width)), y:Math.max(0,Math.min(c.height,(e.clientY-b.top)*c.height/b.height))};
+}
+function closeOcr(){
+  $("#ocr-modal").hidden=true;
+  const c=$("#ocr-canvas"); c.width=0; c.height=0;
+  if(ocr.src){ocr.src.width=0; ocr.src.height=0;}
+  ocr.src=null; ocr.crop=null; ocr.drag=null;
+  $("#ocr-results").innerHTML=""; $("#photo-input").value="";
+}
+
+function otsu(gray){
+  const hist=new Array(256).fill(0); gray.forEach(v=>hist[v]++);
+  const total=gray.length; let sum=0; for(let i=0;i<256;i++)sum+=i*hist[i];
+  let sumB=0,wB=0,max=0,t=127;
+  for(let i=0;i<256;i++){ wB+=hist[i]; if(!wB)continue; const wF=total-wB; if(!wF)break;
+    sumB+=i*hist[i]; const mB=sumB/wB, mF=(sum-sumB)/wF, v=wB*wF*(mB-mF)*(mB-mF); if(v>max){max=v;t=i;} }
+  return t;
+}
+/* Recorta la zona, la pasa a gris con el texto oscuro sobre fondo claro y la
+   divide en renglones: Tesseract lee bien un renglón de la pantalla de
+   puntos del cargador, pero se confunde con la pantalla completa. */
+function grayRegion(r,scale){
+  const w=Math.max(1,Math.round(r.w*scale)), h=Math.max(1,Math.round(r.h*scale));
+  const c=document.createElement("canvas"); c.width=w; c.height=h;
+  const x=c.getContext("2d",{willReadFrequently:true});
+  x.drawImage(ocr.src,r.x,r.y,r.w,r.h,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data; c.width=0;
+  const g=new Uint8ClampedArray(w*h);
+  for(let i=0,j=0;j<g.length;i+=4,j++) g[j]=Math.max(d[i],d[i+1],d[i+2]);
+  return {g,w,h};
+}
+function grayCanvas({g,w,h},invert){
+  const c=document.createElement("canvas"); c.width=w; c.height=h;
+  const x=c.getContext("2d"); const o=x.createImageData(w,h);
+  for(let j=0,i=0;j<g.length;j++,i+=4){ const v=invert?255-g[j]:g[j]; o.data[i]=o.data[i+1]=o.data[i+2]=v; o.data[i+3]=255; }
+  x.putImageData(o,0,0); return c;
+}
+function inkMask({g,w,h},lightText){
+  // tinta = píxel que se aparta de la media local (resiste reflejos)
+  const W1=w+1, I=new Float64Array(W1*(h+1));
+  for(let y=1;y<=h;y++){let row=0;for(let x=1;x<=w;x++){row+=g[(y-1)*w+x-1];I[y*W1+x]=I[(y-1)*W1+x]+row;}}
+  const R=Math.max(6,Math.round(Math.min(w,h)/8)), m8=new Uint8Array(w*h);
+  for(let y=0;y<h;y++){
+    const y1=Math.max(0,y-R),y2=Math.min(h,y+R+1);
+    for(let x=0;x<w;x++){
+      const x1=Math.max(0,x-R),x2=Math.min(w,x+R+1);
+      const m=(I[y2*W1+x2]-I[y1*W1+x2]-I[y2*W1+x1]+I[y1*W1+x1])/((x2-x1)*(y2-y1));
+      const v=g[y*w+x];
+      if(lightText ? v>m*1.15+8 : v<m*0.85-8) m8[y*w+x]=1;
+    }
+  }
+  return m8;
+}
+/* Busca manchas de tinta (caracteres) y las agrupa en renglones por altura
+   y posición; así el ícono grande del cargador queda fuera de los números. */
+function textBlocks(mask,w,h){
+  const lab=new Int32Array(w*h), stack=new Int32Array(w*h), comps=[];
+  for(let start=0;start<w*h;start++){
+    if(!mask[start]||lab[start])continue;
+    const id=comps.length+1; let sp=0, n=0, x0=w, y0=h, x1=0, y1=0;
+    stack[sp++]=start; lab[start]=id;
+    while(sp){
+      const p=stack[--sp], x=p%w, y=(p-x)/w; n++;
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+      if(x>0&&mask[p-1]&&!lab[p-1]){lab[p-1]=id;stack[sp++]=p-1;}
+      if(x<w-1&&mask[p+1]&&!lab[p+1]){lab[p+1]=id;stack[sp++]=p+1;}
+      if(y>0&&mask[p-w]&&!lab[p-w]){lab[p-w]=id;stack[sp++]=p-w;}
+      if(y<h-1&&mask[p+w]&&!lab[p+w]){lab[p+w]=id;stack[sp++]=p+w;}
+    }
+    comps.push({x0,y0,x1:x1+1,y1:y1+1,n});
+  }
+  const minH=Math.max(8,h*0.03), maxH=h*0.6;
+  const chars=comps.filter(c=>{const ch=c.y1-c.y0, cw=c.x1-c.x0;
+    return ch>=minH && ch<=maxH && cw<=ch*2.5 && c.n>=ch*cw*0.12;}).sort((a,b)=>a.x0-b.x0);
+  const lines=[];
+  for(const c of chars){
+    const ch=c.y1-c.y0, cy=(c.y0+c.y1)/2;
+    const L=lines.find(l=>Math.abs(cy-l.cy)<l.ch*0.35 && Math.abs(ch-l.ch)<Math.max(ch,l.ch)*0.35 && c.x0-l.x1<l.ch*1.3 && c.x0>=l.x0);
+    if(L){ L.x1=Math.max(L.x1,c.x1); L.y0=Math.min(L.y0,c.y0); L.y1=Math.max(L.y1,c.y1); L.k++; L.ch=(L.ch*(L.k-1)+ch)/L.k; L.cy=(L.cy*(L.k-1)+cy)/L.k; }
+    else lines.push({x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,ch,cy,k:1});
+  }
+  return lines.filter(l=>l.k>=2).map(l=>({x:l.x0,y:l.y0,w:l.x1-l.x0,h:l.y1-l.y0}));
+}
+function ocrImages(r){
+  const scale=Math.min(4,900/r.w);
+  const reg=grayRegion(r,scale);
+  const t=otsu(reg.g); let bright=0; for(const v of reg.g) if(v>t) bright++;
+  const lightText = bright < reg.g.length/2;      // pantalla oscura con letras claras
+  const imgs=[];
+  const blocks=textBlocks(inkMask(reg,lightText),reg.w,reg.h).sort((p,q)=>q.w*q.h-p.w*p.h).slice(0,8);
+  for(const k of blocks){
+    const pad=Math.round(k.h*0.3), x0=Math.max(0,k.x-pad), y0=Math.max(0,k.y-pad);
+    const x1=Math.min(reg.w,k.x+k.w+pad), y1=Math.min(reg.h,k.y+k.h+pad);
+    imgs.push(grayCanvas(grayRegion({x:r.x+x0/scale, y:r.y+y0/scale, w:(x1-x0)/scale, h:(y1-y0)/scale}, scale*Math.min(3,110/k.h)), lightText));
+  }
+  if(r.w/r.h>2.2 || !imgs.length) imgs.unshift(grayCanvas(grayRegion(r,Math.min(3,110/r.h*1.6)),lightText));
+  return imgs;
+}
+function extractCandidates(text){
+  const t=text.replace(/,/g,".").replace(/[ \t]+/g," ");
+  const found=new Map();
+  const add=(v,score)=>{ if(!(v>=0.1&&v<=150))return; const k=v.toFixed(2); found.set(k,Math.max(found.get(k)||0,score)); };
+  // número seguido de kWh; el lector a veces toma el punto por ":"
+  for(const m of t.matchAll(/(\d{1,3})\s?[.:]\s?(\d{2})\s*(?:k\s*w?\s*h|kw|wh|k)/gi)) add(parseFloat(m[1]+"."+m[2]),3);
+  const noTimes=t.replace(/\d{1,2}\s?:\s?\d{2}(?:\s?:\s?\d{2})?/g," ");
+  for(const m of noTimes.matchAll(/(?<![\d.])(\d{1,3})\.(\d{2})(?![\d.])/g)) add(parseFloat(m[1]+"."+m[2]),1);
+  const dm=t.match(/(\d{1,2})\s?:\s?(\d{2})\s?:\s?(\d{2})/);
+  const dur = dm && +dm[2]<60 && +dm[3]<60 ? {h:+dm[1],m:+dm[2],s:+dm[3]} : null;
+  const kwh=[...found.entries()].sort((a,b)=>b[1]-a[1]).map(([k,score])=>({v:parseFloat(k),score}));
+  return {kwh,dur};
+}
+async function runOcr(){
+  if(!ocr.src)return;
+  const btn=$("#ocr-run-btn"); btn.disabled=true; $("#ocr-results").innerHTML="";
+  try{
+    ocrStatus("Preparando lector… (la primera vez tarda un poco)");
+    const w=await ensureWorker();
+    const r=ocr.crop||{x:0,y:0,w:ocr.src.width,h:ocr.src.height};
+    const imgs=ocrImages(r), texts=[];
+    for(const [i,c] of imgs.entries()){ ocrStatus(`Leyendo renglón ${i+1} de ${imgs.length}…`); const {data}=await w.recognize(c); texts.push(data.text); c.width=0; }
+    const res=extractCandidates(texts.join("\n"));
+    showOcrResults(res);
+  }catch(e){ console.error(e); ocrStatus("No se pudo leer: "+e.message); }
+  finally{ btn.disabled=false; }
+}
+let lastDur=null;
+function showOcrResults(res){
+  lastDur=res.dur;
+  if(!res.kwh.length){
+    ocrStatus(ocr.crop?"No encontré el valor. Prueba un recuadro más ajustado al número, o escríbelo a mano.":"No encontré el valor. Arrastra un recuadro sobre la pantalla del cargador y vuelve a leer.");
+    return;
+  }
+  ocrStatus(res.kwh.length>1?"Toca el valor correcto:":"Valor encontrado. Tócalo para usarlo:");
+  const durTxt = res.dur ? `<div class="small muted" style="margin-top:10px">Duración detectada: <b class="num">${String(res.dur.h).padStart(2,"0")}:${String(res.dur.m).padStart(2,"0")}:${String(res.dur.s).padStart(2,"0")}</b>${$("#c-hi").value&&!$("#c-hf").value?" · se usará para calcular la hora fin":""}</div>` : "";
+  $("#ocr-results").innerHTML = `<div class="chips">${res.kwh.slice(0,5).map((k,i)=>`<button class="chip ${i===0?"best":""}" data-act="ocr-pick" data-v="${k.v}">${k.v.toFixed(2)} kWh</button>`).join("")}</div>${durTxt}`;
+}
+function pickOcr(v){
+  $("#c-kwh").value=Number(v).toFixed(2);
+  let msg=`kWh: ${Number(v).toFixed(2)}`;
+  const hi=$("#c-hi").value;
+  if(lastDur && hi && !$("#c-hf").value){
+    const hf=addDuration(hi, lastDur.h*60+lastDur.m+Math.round(lastDur.s/60));
+    $("#c-hf").value=hf; msg+=` · hora fin ${hf}`;
+  }
+  closeOcr(); toast(msg+". Revisa y guarda.");
+}
+
+/* ---------- importar desde la nota ---------- */
+function parseNotes(text){
+  const out=[], bad=[];
+  text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).forEach(line=>{
+    const d=line.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    const k=line.match(/total\s*([\d]+[.,]?\d*)\s*kwh/i) || line.match(/([\d]+[.,]\d+)\s*kwh/i);
+    if(!d||!k){bad.push(line);return;}
+    const hi=line.match(/inicia\s*(?:a\s*las\s*)?(\d{1,2})[.:](\d{2})/i);
+    const pc=line.match(/(\d{1,3})\s*%/);
+    const hf=line.match(/fin\s*(\d{1,2})[.:](\d{2})/i);
+    const hm=m=>m?String(m[1]).padStart(2,"0")+":"+m[2]:null;
+    out.push({fecha:`${d[3]}-${d[2].padStart(2,"0")}-${d[1].padStart(2,"0")}`, hi:hm(hi), hf:hm(hf), pct:pc?Math.min(100,+pc[1]):null, kwh:round2(parseFloat(k[1].replace(",",".")))});
+  });
+  return {out,bad};
+}
+function previewImport(){
+  const {out,bad}=parseNotes($("#imp-text").value);
+  if(!out.length&&!bad.length){$("#imp-preview").textContent="";return;}
+  const kwh=round2(out.reduce((s,c)=>s+c.kwh,0));
+  $("#imp-preview").innerHTML=`Se reconocen <b>${out.length}</b> cargas (${kwhFmt(kwh)} kWh).`+(bad.length?` <span style="color:var(--bad)">${bad.length} línea(s) no se entienden y se omiten.</span>`:"");
+}
+async function importNotes(){
+  if(!needDb())return;
+  const {out}=parseNotes($("#imp-text").value);
+  const fresh=out.filter(n=>!state.cargas.some(c=>c.fecha===n.fecha&&Math.abs((c.kwh||0)-n.kwh)<0.005));
+  if(!fresh.length){toast(out.length?"Esas cargas ya están registradas":"No reconocí ninguna carga");return;}
+  const paid=$("#imp-paid").checked;
+  const tarifa=Number(state.config.tarifa)||0;
+  if(paid&&!tarifa){toast("Configura primero la tarifa para importar como pagadas");return;}
+  if(!confirm(`Importar ${fresh.length} cargas${paid?" como ya pagadas":""}?${out.length>fresh.length?` (${out.length-fresh.length} repetidas se omiten)`:""}`))return;
+  const upd={}; const withIds=fresh.map(n=>({...n,id:push(ref(db,`${BASE}/cargas`)).key}));
+  let liqId=null;
+  if(paid){
+    liqId=push(ref(db,`${BASE}/liquidaciones`)).key;
+    const last=[...withIds].sort(byFecha).pop();
+    upd[`liquidaciones/${liqId}`]=buildLiq(withIds,tarifa,{pagada:true,fechaPago:last.fecha,referencia:"Importado de la nota"});
+  }
+  withIds.forEach(({id,...c})=>upd[`cargas/${id}`]={...c,liqId,createdAt:Date.now()});
+  try{ await update(ref(db,BASE),upd); $("#imp-text").value=""; previewImport(); toast(`${fresh.length} cargas importadas`); }catch(e){fail(e);}
+}
+
+/* ---------- ajustes ---------- */
+async function saveConfig(){
+  if(!needDb())return;
+  const tarifa=parseSmart($("#s-tarifa").value);
+  const cfg={titulo:$("#s-titulo").value.trim()||"Cargas", proveedor:$("#s-prov").value.trim()||"", tarifa:tarifa>0?tarifa:0};
+  try{ await set(ref(db,`${BASE}/config`),cfg); ["#s-titulo","#s-prov","#s-tarifa"].forEach(s=>delete $(s).dataset.touched); delete $("#l-tarifa").dataset.touched; toast("Ajustes guardados"); }catch(e){fail(e);}
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify({exportado:new Date().toISOString(),...state},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`control-cargas-${today()}.json`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+
+/* ---------- eventos ---------- */
+function initUI(){
+  if(READ_ONLY){ document.body.classList.add("ro"); switchView("estado"); renderEstado(); }
+  resetForm();
+  document.addEventListener("click",ev=>{
+    const b=ev.target.closest("[data-act]"); if(!b)return;
+    const a=b.dataset.act, id=b.dataset.id;
+    if(a==="save-carga")saveCarga();
+    else if(a==="cancel-edit")resetForm();
+    else if(a==="edit-carga")editCarga(id);
+    else if(a==="del-carga")delCarga(id);
+    else if(a==="photo")$("#photo-input").click();
+    else if(a==="ocr-run")runOcr();
+    else if(a==="ocr-close")closeOcr();
+    else if(a==="ocr-pick")pickOcr(b.dataset.v);
+    else if(a==="sel-all"){const p=pendientes();const all=p.every(c=>selection[c.id]!==false);p.forEach(c=>selection[c.id]=!all);renderLiquidar();}
+    else if(a==="create-liq")createLiq();
+    else if(a==="pay"){const f=$(`#pf-${id}`); if(f)f.hidden=!f.hidden;}
+    else if(a==="confirm-pay")confirmPay(id);
+    else if(a==="unpay")unpay(id);
+    else if(a==="del-liq")delLiq(id);
+    else if(a==="share-img")shareImg(id);
+    else if(a==="copy-liq")copyText(linkFor("?liq="+id));
+    else if(a==="copy-estado")copyText(linkFor("?estado"));
+    else if(a==="save-config")saveConfig();
+    else if(a==="import-notes")importNotes();
+    else if(a==="export")exportData();
+  });
+  document.addEventListener("change",ev=>{
+    const s=ev.target.dataset&&ev.target.dataset.sel; if(s){selection[s]=ev.target.checked;updateLiqSummary();}
+  });
+  document.querySelectorAll("nav.tabs button").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
+  $("#l-tarifa").addEventListener("input",e=>{e.target.dataset.touched="1";updateLiqSummary();});
+  ["#s-titulo","#s-prov","#s-tarifa"].forEach(s=>$(s).addEventListener("input",e=>e.target.dataset.touched="1"));
+  $("#imp-text").addEventListener("input",previewImport);
+  $("#c-kwh").addEventListener("keydown",e=>{if(e.key==="Enter")saveCarga();});
+  $("#photo-input").addEventListener("change",e=>{const f=e.target.files[0]; if(f)openPhoto(f).catch(err=>toast("No se pudo abrir la foto: "+err.message));});
+
+  const cv=$("#ocr-canvas");
+  cv.addEventListener("pointerdown",e=>{ if(!ocr.src)return; cv.setPointerCapture(e.pointerId); ocr.drag=canvasPoint(e); });
+  cv.addEventListener("pointermove",e=>{ if(!ocr.drag)return; const p=canvasPoint(e), a=ocr.drag;
+    ocr.crop={x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),w:Math.abs(p.x-a.x),h:Math.abs(p.y-a.y)}; drawOcrCanvas(); });
+  cv.addEventListener("pointerup",()=>{ ocr.drag=null;
+    if(ocr.crop&&(ocr.crop.w<25||ocr.crop.h<15)) ocr.crop=null;
+    else if(ocr.crop) ocr.crop={x:Math.round(ocr.crop.x),y:Math.round(ocr.crop.y),w:Math.round(ocr.crop.w),h:Math.round(ocr.crop.h)};
+    drawOcrCanvas(); });
+}
+
+function dbError(e){
+  conn("off","Sin acceso a los datos");
+  const b=$("#config-banner"); b.hidden=false; b.className="banner";
+  b.innerHTML=`<b>Firebase rechazó la lectura (${escapeHtml(e.code||e.message)}).</b><br>Revisa que las reglas de Realtime Database permitan leer y escribir en <code>${BASE}</code> a usuarios autenticados (ver README).`;
+}
+function attachListeners(){
+  onValue(ref(db,`${BASE}/config`),snap=>{ state.config={...state.config,...(snap.val()||{})}; renderAll(); },dbError);
+  onValue(ref(db,`${BASE}/cargas`),snap=>{
+    const v=snap.val()||{}; state.cargas=Object.entries(v).map(([id,c])=>({id,...c})); renderAll();
+  },dbError);
+  onValue(ref(db,`${BASE}/liquidaciones`),snap=>{
+    const v=snap.val()||{};
+    state.liqs=Object.entries(v).map(([id,l])=>({id,...l,detalle:l.detalle?Object.values(l.detalle):[]})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    renderAll();
+  },dbError);
+}
+
+async function start(){
+  initUI();
+  try{
+    const app=initializeApp(firebaseConfig);
+    const auth=getAuth(app);
+    db=getDatabase(app);
+    conn("wait","Autenticando…");
+    await signInAnonymously(auth);
+    onAuthStateChanged(auth,user=>{
+      if(!user||ready)return;
+      ready=true;
+      attachListeners();
+      conn("on",READ_ONLY?"Solo lectura · en vivo":"Sincronizado en vivo");
+    });
+  }catch(e){
+    conn("off","Error de conexión");
+    const b=$("#config-banner"); b.hidden=false; b.className="banner";
+    b.innerHTML=`<b>No se pudo conectar a Firebase.</b><br>${escapeHtml(e.message)}. Revisa la configuración y que el inicio de sesión anónimo esté activado.`;
+  }
+}
+start();
+</script>
+</body>
+</html>
