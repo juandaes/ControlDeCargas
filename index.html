@@ -146,8 +146,14 @@
 
   <!-- ===================== CARGAS ===================== -->
   <section class="view active" id="view-cargas">
+    <div class="card" id="curso-card" hidden>
+      <h2>Cargas en curso</h2>
+      <div id="curso-list"></div>
+    </div>
+
     <div class="card">
       <h2><span id="form-title">Nueva carga</span></h2>
+      <div class="small muted" id="form-hint">Al conectar el carro llena la hora de inicio y el %, y toca <b>Iniciar carga</b>. Al terminar, la finalizas con la hora fin y los kWh.</div>
       <div class="row2">
         <div><label class="f" for="c-fecha">Fecha</label><input type="date" id="c-fecha"></div>
         <div><label class="f" for="c-pct">% batería al iniciar</label><input type="number" id="c-pct" class="num-in" min="0" max="100" inputmode="numeric" placeholder="45"></div>
@@ -331,7 +337,11 @@ function durText(hi,hf){
   let d=b-a; if(d<0)d+=1440; return `${Math.floor(d/60)}h ${String(d%60).padStart(2,"0")}m`;
 }
 const byFecha = (a,b) => (a.fecha||"").localeCompare(b.fecha||"") || (a.hi||"").localeCompare(b.hi||"");
-const pendientes = () => state.cargas.filter(c=>!c.liqId).sort(byFecha);
+// una carga sin kWh está en curso: se inició pero falta finalizarla
+const terminada = c => Number(c.kwh)>0;
+const pendientes = () => state.cargas.filter(c=>!c.liqId&&terminada(c)).sort(byFecha);
+const enCurso = () => state.cargas.filter(c=>!c.liqId&&!terminada(c)).sort(byFecha);
+const nowHHMM = () => { const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
 function periodo(det){ if(!det||!det.length)return "—"; const s=[...det].sort(byFecha); const a=fmtDate(s[0].fecha), b=fmtDate(s[s.length-1].fecha); return a===b?a:`${a} – ${b}`; }
 function needDb(){ if(!ready){toast("Aún no hay conexión con la base de datos");return false;} return true; }
 function fail(e){ console.error(e); toast("No se pudo guardar: "+(e.code||e.message)); }
@@ -361,6 +371,15 @@ function cargaLine(c){
 }
 
 function renderCargas(){
+  const curso=enCurso();
+  $("#curso-card").hidden=!curso.length;
+  $("#curso-list").innerHTML = curso.map(c=>`
+    <div class="item">
+      <div class="main"><div class="t1">${fmtDate(c.fecha)} <span class="badge warn">En curso</span></div><div class="t2">${escapeHtml(cargaLine(c)||"Sin datos de inicio")}</div></div>
+      <button class="btn sm" data-act="finish-carga" data-id="${c.id}">Finalizar</button>
+      <button class="icon-btn" data-act="del-carga" data-id="${c.id}" title="Eliminar">✕</button>
+    </div>`).join("");
+  if(!editingId) updateSaveLabel();
   const pend=pendientes();
   const total=round2(pend.reduce((s,c)=>s+(c.kwh||0),0));
   const tarifa=Number(state.config.tarifa)||0;
@@ -474,36 +493,54 @@ function renderEstado(){
     <div class="card">
       <div class="hero"><div><div class="label">Pendiente de pago</div><div class="sub">${unpaid.length?`${unpaid.length} liquidación${unpaid.length>1?"es":""}`:"Todo al día"}</div></div><div class="amount">${money(unpaid.reduce((s,l)=>s+(l.valor||0),0))}</div></div>
       <div class="divider"></div>
-      <div class="small muted">Cargas aún sin liquidar: <b class="num">${pend.length}</b> · <b class="num">${kwhFmt(pk)} kWh</b>${tarifa?` (≈ ${money(pk*tarifa)})`:""}</div>
+      <div class="small muted">Cargas aún sin liquidar: <b class="num">${pend.length}</b> · <b class="num">${kwhFmt(pk)} kWh</b>${tarifa?` (≈ ${money(pk*tarifa)})`:""}${enCurso().length?` · ${enCurso().length} en curso`:""}</div>
     </div>
     ${pend.length?`<div class="card"><h2>Cargas sin liquidar</h2>${pend.map(c=>`<div class="item"><div class="main"><div class="t1">${fmtDate(c.fecha)}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div><div class="kwh">${kwhFmt(c.kwh)} kWh</div></div>`).join("")}</div>`:""}
     <div class="card"><h2>Liquidaciones</h2>${state.liqs.length?state.liqs.map(l=>liqCard(l,false,false)).join(""):`<div class="empty">Sin liquidaciones.</div>`}</div>`;
 }
 
 /* ---------- acciones: cargas ---------- */
+let formMode="new", hfAuto=false;   // new | finish | edit
+function updateSaveLabel(){
+  const hasKwh=$("#c-kwh").value.trim()!=="";
+  $("#save-carga-btn").textContent = formMode==="finish" ? "Finalizar carga"
+    : formMode==="edit" ? "Guardar cambios"
+    : hasKwh ? "Guardar carga completa" : "Iniciar carga";
+}
+function setFormMode(mode,title){
+  formMode=mode;
+  $("#form-title").textContent=title;
+  $("#form-hint").hidden = mode!=="new";
+  $("#cancel-edit-btn").hidden = mode==="new";
+  updateSaveLabel();
+}
 function resetForm(){
-  editingId=null;
-  $("#c-fecha").value=today(); ["#c-hi","#c-hf","#c-pct","#c-kwh"].forEach(s=>$(s).value="");
-  $("#form-title").textContent="Nueva carga"; $("#save-carga-btn").textContent="Guardar carga"; $("#cancel-edit-btn").hidden=true;
+  editingId=null; hfAuto=false;
+  $("#c-fecha").value=today(); ["#c-hf","#c-pct","#c-kwh"].forEach(s=>$(s).value="");
+  $("#c-hi").value=nowHHMM();
+  setFormMode("new","Nueva carga");
 }
 async function saveCarga(){
   if(!needDb())return;
   const fecha=$("#c-fecha").value, kwh=parseSmart($("#c-kwh").value);
   const pctRaw=$("#c-pct").value.trim();
+  const kwhRaw=$("#c-kwh").value.trim();
   if(!fecha){toast("Falta la fecha");return;}
-  if(!(kwh>0)){toast("Escribe el total de kWh");$("#c-kwh").focus();return;}
+  if(kwhRaw!=="" && !(kwh>0)){toast("El total de kWh no es un número válido");$("#c-kwh").focus();return;}
   if(kwh>150){toast("Ese valor de kWh parece demasiado alto");return;}
+  if(formMode==="finish" && !(kwh>0)){toast("Escribe el total de kWh para finalizar");$("#c-kwh").focus();return;}
+  if(!(kwh>0) && !$("#c-hi").value && pctRaw===""){toast("Escribe al menos la hora de inicio o el %");return;}
   const pct = pctRaw===""?null:Math.max(0,Math.min(100,parseInt(pctRaw,10)));
-  const data={fecha, hi:$("#c-hi").value||null, hf:$("#c-hf").value||null, pct, kwh:round2(kwh)};
+  const data={fecha, hi:$("#c-hi").value||null, hf:$("#c-hf").value||null, pct, kwh:kwh>0?round2(kwh):null};
   try{
     if(editingId){
       const prev=state.cargas.find(c=>c.id===editingId);
       if(prev&&prev.liqId){toast("Esta carga ya está liquidada");return;}
       await update(ref(db,`${BASE}/cargas/${editingId}`),data);
-      toast("Carga actualizada");
+      toast(formMode==="finish" ? `Carga finalizada · ${kwhFmt(data.kwh)} kWh` : "Carga actualizada");
     }else{
       await push(ref(db,`${BASE}/cargas`),{...data, liqId:null, createdAt:Date.now()});
-      toast(`Carga guardada · ${kwhFmt(data.kwh)} kWh`);
+      toast(data.kwh ? `Carga guardada · ${kwhFmt(data.kwh)} kWh` : "Carga iniciada. Finalízala cuando termine.");
     }
     resetForm();
   }catch(e){fail(e);}
@@ -513,13 +550,20 @@ function editCarga(id){
   editingId=id;
   $("#c-fecha").value=c.fecha||""; $("#c-hi").value=c.hi||""; $("#c-hf").value=c.hf||"";
   $("#c-pct").value=c.pct??""; $("#c-kwh").value=c.kwh??"";
-  $("#form-title").textContent="Editar carga"; $("#save-carga-btn").textContent="Guardar cambios"; $("#cancel-edit-btn").hidden=false;
+  hfAuto=false;
+  setFormMode("edit","Editar carga");
   window.scrollTo({top:0,behavior:"smooth"});
+}
+function finishCarga(id){
+  editCarga(id);
+  if(!$("#c-hf").value){ $("#c-hf").value=nowHHMM(); hfAuto=true; }
+  setFormMode("finish","Finalizar carga");
+  $("#c-kwh").focus({preventScroll:true});
 }
 async function delCarga(id){
   if(!needDb())return;
   const c=state.cargas.find(x=>x.id===id); if(!c)return;
-  if(!confirm(`¿Eliminar la carga del ${fmtDate(c.fecha)} (${kwhFmt(c.kwh)} kWh)?`))return;
+  if(!confirm(`¿Eliminar la carga del ${fmtDate(c.fecha)}${terminada(c)?` (${kwhFmt(c.kwh)} kWh)`:" (en curso)"}?`))return;
   try{ await remove(ref(db,`${BASE}/cargas/${id}`)); if(editingId===id)resetForm(); toast("Carga eliminada"); }catch(e){fail(e);}
 }
 
@@ -807,16 +851,16 @@ function showOcrResults(res){
     return;
   }
   ocrStatus(res.kwh.length>1?"Toca el valor correcto:":"Valor encontrado. Tócalo para usarlo:");
-  const durTxt = res.dur ? `<div class="small muted" style="margin-top:10px">Duración detectada: <b class="num">${String(res.dur.h).padStart(2,"0")}:${String(res.dur.m).padStart(2,"0")}:${String(res.dur.s).padStart(2,"0")}</b>${$("#c-hi").value&&!$("#c-hf").value?" · se usará para calcular la hora fin":""}</div>` : "";
+  const durTxt = res.dur ? `<div class="small muted" style="margin-top:10px">Duración detectada: <b class="num">${String(res.dur.h).padStart(2,"0")}:${String(res.dur.m).padStart(2,"0")}:${String(res.dur.s).padStart(2,"0")}</b>${$("#c-hi").value&&(!$("#c-hf").value||hfAuto)?" · se usará para calcular la hora fin":""}</div>` : "";
   $("#ocr-results").innerHTML = `<div class="chips">${res.kwh.slice(0,5).map((k,i)=>`<button class="chip ${i===0?"best":""}" data-act="ocr-pick" data-v="${k.v}">${k.v.toFixed(2)} kWh</button>`).join("")}</div>${durTxt}`;
 }
 function pickOcr(v){
   $("#c-kwh").value=Number(v).toFixed(2);
   let msg=`kWh: ${Number(v).toFixed(2)}`;
   const hi=$("#c-hi").value;
-  if(lastDur && hi && !$("#c-hf").value){
+  if(lastDur && hi && (!$("#c-hf").value||hfAuto)){
     const hf=addDuration(hi, lastDur.h*60+lastDur.m+Math.round(lastDur.s/60));
-    $("#c-hf").value=hf; msg+=` · hora fin ${hf}`;
+    $("#c-hf").value=hf; hfAuto=false; msg+=` · hora fin ${hf}`;
   }
   closeOcr(); toast(msg+". Revisa y guarda.");
 }
@@ -885,6 +929,7 @@ function initUI(){
     if(a==="save-carga")saveCarga();
     else if(a==="cancel-edit")resetForm();
     else if(a==="edit-carga")editCarga(id);
+    else if(a==="finish-carga")finishCarga(id);
     else if(a==="del-carga")delCarga(id);
     else if(a==="photo")$("#photo-input").click();
     else if(a==="ocr-run")runOcr();
@@ -911,6 +956,8 @@ function initUI(){
   ["#s-titulo","#s-prov","#s-tarifa"].forEach(s=>$(s).addEventListener("input",e=>e.target.dataset.touched="1"));
   $("#imp-text").addEventListener("input",previewImport);
   $("#c-kwh").addEventListener("keydown",e=>{if(e.key==="Enter")saveCarga();});
+  $("#c-kwh").addEventListener("input",updateSaveLabel);
+  $("#c-hf").addEventListener("input",()=>hfAuto=false);
   $("#photo-input").addEventListener("change",e=>{const f=e.target.files[0]; if(f)openPhoto(f).catch(err=>toast("No se pudo abrir la foto: "+err.message));});
 
   const cv=$("#ocr-canvas");

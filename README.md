@@ -6,7 +6,10 @@ Es un solo archivo (`index.html`) publicado con GitHub Pages, como CuentasCompar
 
 ## Qué hace
 
-- **Cargas**: registra fecha, hora de inicio, % de batería al iniciar, hora de fin y total de kWh.
+- **Cargas**: se registran en dos momentos.
+  - Al conectar el carro: hora de inicio (viene con la hora actual) y % de batería → **Iniciar carga**. Queda en *Cargas en curso*.
+  - Al terminar: **Finalizar** → hora fin (viene con la hora actual) y total de kWh. Solo las cargas finalizadas entran a la liquidación.
+  - Si ya tienes todos los datos, escribe también los kWh y toca **Guardar carga completa**.
   - **📷 Foto**: toma la foto del cargador, arrastra un recuadro sobre la pantalla (o solo sobre el número) y la app lee los kWh en el teléfono con Tesseract.js. Si encuentra la duración (p. ej. `02:23:39`) y ya pusiste la hora de inicio, calcula la hora de fin. **La foto no se sube ni se guarda**: se procesa en memoria y se descarta al cerrar.
 - **Liquidar**: eliges las cargas pendientes y la tarifa (COP/kWh), y la app calcula el valor a pagar. Cada liquidación guarda su propia tarifa y una copia del detalle.
 - **Pagos**: registra el pago (fecha y referencia de la transferencia), comparte la **imagen del estado de cuenta** por WhatsApp o copia el **enlace de solo lectura** de esa liquidación.
