@@ -3,141 +3,202 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1E6B45">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Control de Cargas</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231A7F45'/><path d='M56 14 26 56h20l-4 30 30-42H52z' fill='white'/></svg>">
 <style>
+  /* Colores por función (contraste medido sobre la superficie donde se usan):
+     label 21:1 · secondary 5.2:1 (4.7:1 sobre fondo) · accent 5.0:1 · pending 5.2:1 · danger 5.7:1
+     oscuro: label 17:1 · secondary 7.7:1 · accent 8.9:1 · pending 8.3:1 · danger 6.0:1 */
   :root{
-    --bg:#EEF2EF;--surface:#FFFFFF;--surface-2:#F5F8F6;--ink:#122019;--muted:#5A6B62;
-    --line:#D5DFD9;--brand:#1E6B45;--brand-deep:#134C30;--ok:#2E7D4F;--warn:#B7791F;--bad:#C0492C;--accent:#E0A431;
-    --chip:#E3F0E8;--banner-bg:#FDF3E3;--banner-line:#EAD5A8;--banner-ink:#7a5a15;
-    --shadow:0 1px 2px rgba(18,32,25,.06), 0 8px 24px rgba(18,32,25,.05);
-    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
-    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --bg:#F2F2F7; --cell:#FFFFFF; --cell-2:#F2F2F7; --fill:rgba(120,120,128,.12);
+    --label:#000000; --secondary:#6C6C70; --sep:rgba(60,60,67,.18);
+    --accent:#1A7F45; --on-accent:#FFFFFF; --accent-tint:rgba(26,127,69,.12);
+    --pending:#B25000; --pending-tint:#FFF1E5; --danger:#C4281C;
+    --bar:rgba(249,249,251,.72); --bar-line:rgba(0,0,0,.08);
+    --sans:system-ui,-apple-system,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --rounded:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
     color-scheme:light;
   }
   @media (prefers-color-scheme:dark){
     :root{
-      --bg:#0F1613;--surface:#17201C;--surface-2:#1C2722;--ink:#E4EEE8;--muted:#9AABA2;
-      --line:#2A3832;--brand:#3FA772;--brand-deep:#7FD3A6;--ok:#5CC48A;--warn:#E3B04B;--bad:#EE7A5E;
-      --chip:#1F3329;--banner-bg:#2B2416;--banner-line:#4E4024;--banner-ink:#EBD29A;
-      --shadow:0 1px 2px rgba(0,0,0,.3);
+      --bg:#000000; --cell:#1C1C1E; --cell-2:#2C2C2E; --fill:rgba(118,118,128,.24);
+      --label:#FFFFFF; --secondary:#AEAEB2; --sep:rgba(84,84,88,.6);
+      --accent:#32D74B; --on-accent:#000000; --accent-tint:rgba(50,215,75,.16);
+      --pending:#FF9F0A; --pending-tint:#3A2A12; --danger:#FF6961;
+      --bar:rgba(28,28,30,.72); --bar-line:rgba(255,255,255,.1);
       color-scheme:dark;
     }
   }
+  @media (prefers-contrast:more){
+    :root{ --secondary:#48484A; --sep:rgba(60,60,67,.45); --bar:var(--cell); }
+  }
+  @media (prefers-contrast:more) and (prefers-color-scheme:dark){ :root{ --secondary:#D1D1D6; } }
+
+  /* Tamaño de texto: en iPhone sigue el ajuste del sistema (Dynamic Type); 17px en lo demás */
+  html{font-size:17px}
+  @supports (font:-apple-system-body){ html{font:-apple-system-body} }
   *{box-sizing:border-box}
-  html,body{margin:0}
-  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.45;-webkit-text-size-adjust:100%;padding-bottom:88px}
-  body.ro{padding-bottom:24px}
+  body{margin:0;font-family:var(--sans);font-size:1rem;line-height:1.3;background:var(--bg);color:var(--label);
+       -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  body.ro{padding-bottom:32px}
   .wrap{max-width:640px;margin:0 auto;padding:0 16px}
   [hidden]{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+  .muted{color:var(--secondary)}
+  .small{font-size:.8125rem;line-height:1.35}
+  b{font-weight:600}
+  :focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:8px}
 
-  header.top{background:linear-gradient(160deg,#1E6B45 0%,#134C30 100%);color:#fff;padding:22px 0 18px}
-  header.top .wrap{display:flex;flex-direction:column;gap:2px}
-  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#BFE4CF}
-  header.top h1{margin:2px 0 0;font-size:20px;font-weight:800;letter-spacing:-.01em}
-  .conn{font-size:11px;font-weight:700;margin-top:6px;display:flex;align-items:center;gap:6px;color:#CDECDA}
-  .dot{width:8px;height:8px;border-radius:50%;background:#9fb;display:inline-block}
-  .dot.off{background:#f2b8a6}.dot.wait{background:#f3d58a}
+  /* ---- título grande ---- */
+  header.nav{padding:calc(12px + env(safe-area-inset-top)) 0 4px}
+  header.nav h1{margin:0;font-size:2rem;font-weight:700;letter-spacing:.01em;line-height:1.15}
+  .sub-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--secondary);font-size:.875rem;margin-top:2px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;flex:none}
+  .dot.off{background:var(--danger)}.dot.wait{background:var(--pending)}
 
-  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--line);padding:6px 0 max(6px,env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(18,32,25,.05)}
-  nav.tabs .wrap{display:flex;gap:4px}
-  nav.tabs button{flex:1;background:none;border:0;cursor:pointer;padding:8px 4px;border-radius:12px;color:var(--muted);font-family:var(--sans);font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px}
-  nav.tabs button .ico{font-size:19px;line-height:1}
-  nav.tabs button.active{color:var(--brand)}
-  body.ro nav.tabs{display:none}
+  main.wrap{padding-top:4px}
+  .view{display:none}
+  .view.active{display:block;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.view.active{animation:none}}
 
-  main.wrap{padding-top:16px}
-  .view{display:none;animation:fade .18s ease}
-  .view.active{display:block}
-  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-  @media (prefers-reduced-motion:reduce){.view,.view.active{animation:none}}
+  /* ---- grupos (lista agrupada) ---- */
+  .grp-h{margin:24px 16px 6px;font-size:.8125rem;font-weight:400;color:var(--secondary);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .grp-h .num{color:var(--secondary)}
+  .grp-f{margin:6px 16px 0;font-size:.8125rem;color:var(--secondary);line-height:1.35}
+  .card{background:var(--cell);border-radius:12px;overflow:hidden}
+  .card.pad{padding:14px 16px}
+  .card h2{margin:0 0 10px;font-size:1.0625rem;font-weight:600}
+  .empty{color:var(--secondary);padding:12px 16px;min-height:44px;display:flex;align-items:center}
 
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
-  .card h2{margin:0 0 12px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
-  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-  .muted{color:var(--muted)}
-  .small{font-size:12.5px}
+  /* filas de formulario: etiqueta a la izquierda, valor a la derecha */
+  .frow{display:flex;align-items:center;gap:12px;min-height:44px;padding:4px 16px;position:relative}
+  .frow + .frow::before,.item + .item::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--sep);transform:scaleY(.5);transform-origin:top}
+  .frow > label{flex:0 1 auto;min-width:0}
+  .frow input:not([type=checkbox]),.frow select{flex:1 1 4em;min-width:0;text-align:right;border:0;background:transparent;font:inherit;color:var(--label);padding:8px 0;min-height:36px;outline:none}
+  .frow input::placeholder{color:var(--secondary);opacity:.8}
+  .frow input[type=date],.frow input[type=time]{-webkit-appearance:none;appearance:none;display:flex;justify-content:flex-end}
+  .frow input::-webkit-date-and-time-value{text-align:right}
+  .frow.stack{flex-direction:column;align-items:stretch;padding:10px 16px}
+  .frow.stack input,.frow.stack textarea{text-align:left;flex:none;width:100%}
+  .frow .unit{color:var(--secondary)}
+  .icon-in{border:0;background:var(--fill);color:var(--accent);width:44px;height:36px;border-radius:10px;display:grid;place-items:center;cursor:pointer;flex:none}
+  textarea{width:100%;min-height:120px;font:inherit;font-size:.9375rem;color:var(--label);background:var(--cell-2);border:0;border-radius:10px;padding:10px 12px;resize:vertical;outline:none}
+  .check{display:flex;align-items:center;gap:12px;cursor:pointer}
+  input[type=checkbox]{-webkit-appearance:none;appearance:none;width:24px;height:24px;min-height:0;border-radius:50%;border:2px solid var(--sep);flex:none;margin:0;display:grid;place-items:center;cursor:pointer}
+  input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+  input[type=checkbox]:checked::after{content:"";width:6px;height:11px;border:solid var(--on-accent);border-width:0 2.5px 2.5px 0;transform:translateY(-1px) rotate(45deg)}
 
-  .banner{background:var(--banner-bg);border:1px solid var(--banner-line);color:var(--banner-ink);border-radius:14px;padding:14px;margin-bottom:14px;font-size:13.5px;line-height:1.5}
-  .banner code{font-family:var(--mono);font-size:12px}
-
-  .hero{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  .hero .label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-  .hero .amount{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:28px;font-weight:700;color:var(--brand-deep);letter-spacing:-.02em}
-  .hero .sub{font-size:13px;color:var(--muted);font-weight:600}
-  .divider{height:1px;background:var(--line);margin:14px 0}
-
-  label.f{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.05em}
-  input,select,textarea{width:100%;font-family:var(--sans);font-size:16px;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;outline:none;min-height:46px}
-  textarea{min-height:120px;font-size:14px;resize:vertical}
-  input.num-in{font-family:var(--mono);font-variant-numeric:tabular-nums}
-  input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(30,107,69,.16)}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .row2 > div{min-width:0}
-  .kwh-row{display:grid;grid-template-columns:1fr auto;gap:10px}
-  .check{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;margin-top:12px;cursor:pointer}
-  .check input{width:20px;height:20px;min-height:0;accent-color:var(--brand)}
-
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:var(--brand);color:#fff;border-radius:12px;font-family:var(--sans);font-size:15px;font-weight:800;padding:12px 16px;cursor:pointer;min-height:46px}
-  .btn:active{filter:brightness(.92)}
+  /* ---- botones ---- */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:var(--accent);color:var(--on-accent);border-radius:12px;font:inherit;font-weight:600;padding:12px 18px;cursor:pointer;min-height:50px;text-decoration:none}
+  .btn:active{opacity:.7}
   .btn.block{width:100%;margin-top:16px}
-  .btn.ghost{background:transparent;color:var(--brand);border:1.5px solid var(--line)}
-  .btn.danger{background:transparent;color:var(--bad);border:1.5px solid var(--line)}
-  .btn.sm{font-size:12.5px;padding:8px 11px;min-height:38px;border-radius:10px}
-  .btn[disabled]{opacity:.5;cursor:not-allowed}
-  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn.ghost{background:var(--fill);color:var(--accent)}
+  .btn.danger{background:var(--fill);color:var(--danger)}
+  .btn.sm{font-size:.9375rem;padding:8px 14px;min-height:44px;border-radius:10px}
+  .btn[disabled],.link-btn[disabled]{opacity:.4;cursor:not-allowed}
+  .btn svg,.icon-btn svg,.icon-in svg{width:20px;height:20px;flex:none}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
   .btn-row .btn{flex:1 1 auto}
+  .link-btn{border:0;background:none;color:var(--accent);font:inherit;font-size:.9375rem;padding:10px 4px;min-height:44px;cursor:pointer}
 
-  .item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed var(--line)}
-  .item:last-child{border-bottom:0}
+  /* ---- filas de lista ---- */
+  .item{display:flex;align-items:center;gap:12px;padding:10px 8px 10px 16px;min-height:60px;position:relative}
+  label.item{cursor:pointer}
   .item .main{flex:1;min-width:0}
-  .item .t1{font-weight:700;font-size:14.5px}
-  .item .t2{font-size:12.5px;color:var(--muted)}
-  .item .kwh{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;white-space:nowrap}
-  .icon-btn{border:0;background:var(--surface-2);color:var(--muted);width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:15px;flex:none}
-  .item input[type=checkbox]{width:22px;height:22px;min-height:0;flex:none;accent-color:var(--brand)}
+  .item .t1{font-weight:400;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .item .t2{font-size:.875rem;color:var(--secondary);margin-top:2px}
+  .item .kwh{font-family:var(--rounded);font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+  .item .kwh small{font-family:var(--sans);font-weight:400;color:var(--secondary);font-size:.8125rem}
+  .icon-btn{border:0;background:none;color:var(--secondary);width:44px;height:44px;border-radius:10px;cursor:pointer;display:grid;place-items:center;flex:none}
+  .icon-btn:active{background:var(--fill)}
+  .icon-btn.del{color:var(--danger)}
 
-  .badge{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
-  .badge.ok{background:rgba(46,125,79,.14);color:var(--ok)}
-  .badge.warn{background:rgba(183,121,31,.15);color:var(--warn)}
+  /* batería: muestra el % con el que llegó el carro */
+  .batt{flex:none;width:34px;height:18px;color:var(--secondary)}
+  .batt .lvl{fill:var(--label);opacity:.55}
+  .batt.charging{color:var(--accent)}
+  .batt.charging .lvl{fill:var(--accent);opacity:1}
 
-  .liq{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;background:var(--surface-2)}
-  .liq-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-  .liq-head .val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:700;color:var(--brand-deep);white-space:nowrap}
-  .liq-meta{font-size:12.5px;color:var(--muted);margin-top:4px}
-  details summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--brand);margin-top:10px}
-  table.det{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
-  table.det th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:6px 4px;border-bottom:1px solid var(--line)}
-  table.det td{padding:7px 4px;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums}
+  .badge{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;line-height:1.4}
+  .badge.ok{background:var(--fill);color:var(--secondary)}
+  .badge.warn{background:var(--pending-tint);color:var(--pending)}
+  .badge.live{background:var(--accent-tint);color:var(--accent)}
+
+  /* ---- totales ---- */
+  .hero{display:flex;flex-direction:column;gap:2px;padding:16px}
+  .hero .label{font-size:.9375rem;color:var(--secondary)}
+  .hero .amount{font-family:var(--rounded);font-variant-numeric:tabular-nums;font-size:2.25rem;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+  .hero .sub{font-size:.875rem;color:var(--secondary)}
+  .divider{height:1px;background:var(--sep);transform:scaleY(.5);margin:0 0 0 16px}
+
+  /* ---- liquidaciones ---- */
+  .liq{background:var(--cell);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .liq-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  .liq-head .per{font-weight:600}
+  .liq-head .val{font-family:var(--rounded);font-variant-numeric:tabular-nums;font-size:1.375rem;font-weight:700;white-space:nowrap}
+  .liq-meta{font-size:.875rem;color:var(--secondary);margin-top:6px}
+  details summary{cursor:pointer;color:var(--accent);margin-top:8px;min-height:44px;display:flex;align-items:center;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details summary::after{content:"›";margin-left:6px;transition:transform .15s}
+  details[open] summary::after{transform:rotate(90deg)}
+  table.det{width:100%;border-collapse:collapse;font-size:.875rem}
+  table.det th{text-align:left;font-size:.75rem;font-weight:400;color:var(--secondary);padding:6px 4px;border-bottom:1px solid var(--sep)}
+  table.det td{padding:8px 4px;border-bottom:1px solid var(--sep);font-variant-numeric:tabular-nums}
   table.det td.r,table.det th.r{text-align:right}
-  table.det tfoot td{font-weight:800;border-bottom:0}
-  .pay-form{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  table.det tfoot td{font-weight:600;border-bottom:0}
+  .liq .btn-row{flex-wrap:nowrap}
+  .liq .btn-row .btn{flex:1 1 0;min-width:0;padding:8px 8px;gap:6px;white-space:nowrap;font-size:.875rem}
+  .liq .btn-row .btn svg{width:18px;height:18px}
+  .pay-form{margin:12px -16px 0;border-top:1px solid var(--sep)}
+  .pay-form .btn-row{padding:0 16px}
 
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-  .chip{border:1.5px solid var(--brand);background:var(--chip);color:var(--ink);border-radius:999px;padding:9px 14px;font-family:var(--mono);font-size:16px;font-weight:700;cursor:pointer}
-  .chip.best{background:var(--brand);color:#fff}
+  .banner{background:var(--pending-tint);color:var(--label);border-radius:12px;padding:14px 16px;margin-top:12px;font-size:.9375rem;line-height:1.4}
+  .banner code{font-family:var(--mono);font-size:.8125rem}
+  code{font-family:var(--mono);font-size:.8125rem}
 
-  .modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
-  .sheet{background:var(--surface);width:100%;max-width:640px;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px max(18px,env(safe-area-inset-bottom))}
-  .sheet h3{margin:0 0 6px;font-size:17px}
-  .crop-wrap{display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden;margin-top:10px}
+  /* ---- barra de pestañas flotante (capa funcional, vidrio) ---- */
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:0 16px calc(8px + env(safe-area-inset-bottom));pointer-events:none}
+  nav.tabs .bar{pointer-events:auto;max-width:420px;margin:0 auto;display:flex;gap:2px;padding:4px;border-radius:30px;
+    background:var(--bar);-webkit-backdrop-filter:blur(24px) saturate(1.4);backdrop-filter:blur(24px) saturate(1.4);
+    border:1px solid var(--bar-line);box-shadow:0 8px 30px rgba(0,0,0,.12)}
+  nav.tabs button{flex:1;background:none;border:0;cursor:pointer;padding:6px 2px;border-radius:24px;color:var(--label);font:inherit;font-size:.625rem;font-weight:500;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center}
+  nav.tabs button svg{width:24px;height:24px}
+  nav.tabs button.active{color:var(--accent);background:var(--fill)}
+  body.ro nav.tabs{display:none}
+  @media (prefers-reduced-transparency:reduce){ nav.tabs .bar{background:var(--cell);-webkit-backdrop-filter:none;backdrop-filter:none} }
+  @media (prefers-contrast:more){ nav.tabs .bar{-webkit-backdrop-filter:none;backdrop-filter:none;border-color:var(--sep)} }
+
+  /* ---- hoja para la foto ---- */
+  .modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:var(--cell);width:100%;max-width:640px;max-height:94vh;overflow:auto;border-radius:14px 14px 0 0;padding:8px 16px calc(16px + env(safe-area-inset-bottom))}
+  @media (prefers-color-scheme:dark){ .sheet{background:var(--cell)} }
+  .sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+  .sheet h3{margin:0;font-size:1.0625rem;font-weight:600}
+  .crop-wrap{display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden;margin-top:12px}
   #ocr-canvas{display:block;max-width:100%;max-height:52vh;touch-action:none;cursor:crosshair}
-  #ocr-status{font-size:13px;color:var(--muted);margin-top:10px;min-height:18px}
+  #ocr-status{font-size:.875rem;color:var(--secondary);margin-top:12px;min-height:1.2em}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{border:0;background:var(--fill);color:var(--label);border-radius:999px;padding:10px 16px;min-height:44px;font-family:var(--rounded);font-size:1.0625rem;font-weight:600;cursor:pointer}
+  .chip.best{background:var(--accent);color:var(--on-accent)}
 
-  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:#122019;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:80;max-width:90vw;text-align:center}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .empty{color:var(--muted);font-size:14px;padding:6px 0}
-  @media (prefers-color-scheme:dark){.toast{background:#E4EEE8;color:#122019}}
+  .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,12px);background:var(--label);color:var(--cell);padding:12px 18px;border-radius:14px;font-size:.9375rem;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80;max-width:min(90vw,420px);text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+  body.ro .toast{bottom:24px}
 </style>
 </head>
 <body>
 
-<header class="top">
+<header class="nav">
   <div class="wrap">
-    <span class="eyebrow">Control de cargas ⚡</span>
-    <h1 id="app-title">Cargas</h1>
-    <span class="conn"><span id="conn-dot" class="dot wait"></span><span id="conn-txt">Conectando…</span></span>
+    <h1 id="view-title">Cargas</h1>
+    <div class="sub-title"><span id="app-title">Cargas</span><span aria-hidden="true">·</span><span id="conn-dot" class="dot wait" aria-hidden="true"></span><span id="conn-txt" role="status">Conectando…</span></div>
   </div>
 </header>
 
@@ -146,139 +207,120 @@
 
   <!-- ===================== CARGAS ===================== -->
   <section class="view active" id="view-cargas">
-    <div class="card" id="curso-card" hidden>
-      <h2>Cargas en curso</h2>
-      <div id="curso-list"></div>
+    <div id="curso-card" hidden>
+      <h2 class="grp-h">En curso</h2>
+      <div class="card" id="curso-list"></div>
     </div>
 
+    <h2 class="grp-h"><span id="form-title">Nueva carga</span></h2>
     <div class="card">
-      <h2><span id="form-title">Nueva carga</span></h2>
-      <div class="small muted" id="form-hint">Al conectar el carro llena la hora de inicio y el %, y toca <b>Iniciar carga</b>. Al terminar, la finalizas con la hora fin y los kWh.</div>
-      <div class="row2">
-        <div><label class="f" for="c-fecha">Fecha</label><input type="date" id="c-fecha"></div>
-        <div><label class="f" for="c-pct">% batería al iniciar</label><input type="number" id="c-pct" class="num-in" min="0" max="100" inputmode="numeric" placeholder="45"></div>
-      </div>
-      <div class="row2">
-        <div><label class="f" for="c-hi">Hora inicio</label><input type="time" id="c-hi"></div>
-        <div><label class="f" for="c-hf">Hora fin</label><input type="time" id="c-hf"></div>
-      </div>
-      <label class="f" for="c-kwh">Total kWh (del cargador)</label>
-      <div class="kwh-row">
-        <input type="text" id="c-kwh" class="num-in" inputmode="decimal" placeholder="13.83" autocomplete="off">
-        <button class="btn ghost" data-act="photo" title="Leer de una foto">📷 Foto</button>
-      </div>
-      <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
-      <div class="btn-row">
-        <button class="btn" data-act="save-carga" id="save-carga-btn">Guardar carga</button>
-        <button class="btn ghost" data-act="cancel-edit" id="cancel-edit-btn" hidden>Cancelar</button>
-      </div>
+      <div class="frow"><label for="c-fecha">Fecha</label><input type="date" id="c-fecha"></div>
+      <div class="frow"><label for="c-hi">Hora inicio</label><input type="time" id="c-hi"></div>
+      <div class="frow"><label for="c-pct">Batería al iniciar</label><input type="number" id="c-pct" class="num" min="0" max="100" inputmode="numeric" placeholder="45"><span class="unit">%</span></div>
+      <div class="frow"><label for="c-hf">Hora fin</label><input type="time" id="c-hf"></div>
+      <div class="frow"><label for="c-kwh">Total kWh</label><input type="text" id="c-kwh" class="num" inputmode="decimal" placeholder="13,83" autocomplete="off">
+        <button class="icon-in" data-act="photo" aria-label="Leer los kWh de una foto del cargador" title="Leer de una foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button></div>
     </div>
+    <p class="grp-f" id="form-hint">Al conectar el carro llena la hora de inicio y el %, y toca Iniciar carga. Al terminar, la finalizas con la hora fin y los kWh.</p>
+    <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+    <div class="btn-row">
+      <button class="btn" data-act="save-carga" id="save-carga-btn">Guardar carga</button>
+      <button class="btn ghost" data-act="cancel-edit" id="cancel-edit-btn" hidden>Cancelar</button>
+    </div>
+    <button class="btn danger block" data-act="del-editing" id="del-edit-btn" hidden>Eliminar carga</button>
 
-    <div class="card">
-      <h2>Pendientes por liquidar <span class="num" id="pend-total"></span></h2>
-      <div id="pend-list"></div>
-    </div>
+    <h2 class="grp-h"><span>Por liquidar</span><span class="num" id="pend-total"></span></h2>
+    <div class="card" id="pend-list"></div>
 
-    <div class="card">
-      <h2>Últimas cargas liquidadas</h2>
-      <div id="done-list"></div>
-    </div>
+    <h2 class="grp-h">Últimas liquidadas</h2>
+    <div class="card" id="done-list"></div>
   </section>
 
   <!-- ===================== LIQUIDAR ===================== -->
   <section class="view" id="view-liquidar">
+    <h2 class="grp-h"><span>Cargas a liquidar</span><button class="link-btn" data-act="sel-all">Todas o ninguna</button></h2>
+    <div class="card" id="liq-sel-list"></div>
+
+    <h2 class="grp-h">Valor</h2>
     <div class="card">
-      <h2>Liquidar cargas <button class="btn ghost sm" data-act="sel-all">Todas / ninguna</button></h2>
-      <div id="liq-sel-list"></div>
-    </div>
-    <div class="card">
-      <label class="f" for="l-tarifa" style="margin-top:0">Tarifa (COP por kWh)</label>
-      <input type="text" id="l-tarifa" class="num-in" inputmode="decimal" placeholder="0">
+      <div class="frow"><label for="l-tarifa">Tarifa por kWh</label><input type="text" id="l-tarifa" class="num" inputmode="decimal" placeholder="0"><span class="unit">COP</span></div>
       <div class="divider"></div>
       <div class="hero">
-        <div><div class="label">Valor a pagar</div><div class="sub" id="l-resumen">—</div></div>
+        <div class="label">Valor a pagar</div>
         <div class="amount" id="l-valor">$0</div>
+        <div class="sub" id="l-resumen">—</div>
       </div>
-      <button class="btn block" data-act="create-liq" id="create-liq-btn">Crear liquidación</button>
     </div>
+    <button class="btn block" data-act="create-liq" id="create-liq-btn">Crear liquidación</button>
   </section>
 
   <!-- ===================== PAGOS ===================== -->
   <section class="view" id="view-pagos">
-    <div class="card">
+    <div class="card" style="margin-top:16px">
       <div class="hero">
-        <div><div class="label">Pendiente de pago</div><div class="sub" id="p-sub">—</div></div>
+        <div class="label">Pendiente de pago</div>
         <div class="amount" id="p-total">$0</div>
+        <div class="sub" id="p-sub">—</div>
       </div>
     </div>
-    <div class="card">
-      <h2>Liquidaciones</h2>
-      <div id="liq-list"></div>
-    </div>
+    <h2 class="grp-h">Liquidaciones</h2>
+    <div id="liq-list"></div>
   </section>
 
   <!-- ===================== AJUSTES ===================== -->
   <section class="view" id="view-ajustes">
+    <h2 class="grp-h">General</h2>
     <div class="card">
-      <h2>General</h2>
-      <label class="f" for="s-titulo" style="margin-top:0">Título</label>
-      <input type="text" id="s-titulo" placeholder="Cargas donde Victor">
-      <label class="f" for="s-prov">¿A quién le pagas?</label>
-      <input type="text" id="s-prov" placeholder="Victor">
-      <label class="f" for="s-tarifa">Tarifa por defecto (COP por kWh)</label>
-      <input type="text" id="s-tarifa" class="num-in" inputmode="decimal" placeholder="0">
-      <button class="btn block" data-act="save-config">Guardar</button>
+      <div class="frow"><label for="s-titulo">Título</label><input type="text" id="s-titulo" placeholder="Cargas donde Victor"></div>
+      <div class="frow"><label for="s-prov">A quién le pagas</label><input type="text" id="s-prov" placeholder="Victor"></div>
+      <div class="frow"><label for="s-tarifa">Tarifa por kWh</label><input type="text" id="s-tarifa" class="num" inputmode="decimal" placeholder="0"><span class="unit">COP</span></div>
     </div>
+    <button class="btn block" data-act="save-config">Guardar ajustes</button>
 
-    <div class="card">
-      <h2>Enlace de solo lectura</h2>
-      <p class="small muted" style="margin-top:0">Quien abra este enlace ve el estado de cuenta y las liquidaciones, sin botones para editar.</p>
-      <button class="btn ghost block" style="margin-top:4px" data-act="copy-estado">🔗 Copiar enlace del estado de cuenta</button>
-    </div>
+    <h2 class="grp-h">Estado de cuenta para compartir</h2>
+    <button class="btn ghost block" style="margin-top:0" data-act="copy-estado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Copiar enlace</button>
+    <p class="grp-f">Quien abra este enlace ve el estado de cuenta y las liquidaciones, sin botones para editar.</p>
 
+    <h2 class="grp-h">Importar desde la nota</h2>
     <div class="card">
-      <h2>Importar desde la nota</h2>
-      <p class="small muted" style="margin-top:0">Pega las líneas de tu nota, una carga por línea. Ejemplo:<br><code class="num">25/09/2026 - inicia 10.20 55% - fin 13.00 total 13.83 Kwh</code></p>
-      <textarea id="imp-text" placeholder="Pega aquí…"></textarea>
-      <label class="check"><input type="checkbox" id="imp-paid"> Estas cargas ya están pagadas</label>
-      <div class="small muted" id="imp-preview" style="margin-top:8px"></div>
-      <button class="btn block" data-act="import-notes">Importar</button>
+      <div class="frow stack"><label for="imp-text" class="small muted" style="margin-bottom:8px">Pega las líneas de tu nota, una carga por línea.</label><textarea id="imp-text" placeholder="25/09/2026 - inicia 10.20 55% - fin 13.00 total 13.83 Kwh"></textarea></div>
+      <div class="frow"><label class="check" for="imp-paid" style="flex:1">Estas cargas ya están pagadas</label><input type="checkbox" id="imp-paid"></div>
     </div>
+    <p class="grp-f" id="imp-preview"></p>
+    <button class="btn block" data-act="import-notes">Importar cargas</button>
 
-    <div class="card">
-      <h2>Respaldo</h2>
-      <button class="btn ghost block" style="margin-top:0" data-act="export">⬇️ Descargar copia (JSON)</button>
-    </div>
+    <h2 class="grp-h">Respaldo</h2>
+    <button class="btn ghost block" style="margin-top:0" data-act="export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>Descargar copia (JSON)</button>
   </section>
 
   <!-- ===================== SOLO LECTURA ===================== -->
   <section class="view" id="view-estado"></section>
 </main>
 
-<nav class="tabs">
-  <div class="wrap">
-    <button data-view="cargas" class="active"><span class="ico">⚡</span>Cargas</button>
-    <button data-view="liquidar"><span class="ico">🧾</span>Liquidar</button>
-    <button data-view="pagos"><span class="ico">✅</span>Pagos</button>
-    <button data-view="ajustes"><span class="ico">⚙️</span>Ajustes</button>
+<nav class="tabs" aria-label="Secciones">
+  <div class="bar">
+    <button data-view="cargas" class="active" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg>Cargas</button>
+    <button data-view="liquidar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>Liquidar</button>
+    <button data-view="pagos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>Pagos</button>
+    <button data-view="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Ajustes</button>
   </div>
 </nav>
 
 <div id="ocr-modal" class="modal" hidden>
-  <div class="sheet">
-    <h3>Leer kWh de la foto</h3>
-    <div class="small muted">Arrastra un recuadro sobre la pantalla del cargador (o solo sobre el número de kWh). La foto no se guarda: se descarta al cerrar.</div>
-    <div class="crop-wrap"><canvas id="ocr-canvas" width="0" height="0"></canvas></div>
-    <div id="ocr-status"></div>
-    <div id="ocr-results"></div>
-    <div class="btn-row">
-      <button class="btn ghost" data-act="ocr-close">Cerrar</button>
-      <button class="btn" data-act="ocr-run" id="ocr-run-btn">Leer kWh</button>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ocr-title">
+    <div class="sheet-bar">
+      <button class="link-btn" data-act="ocr-close">Cancelar</button>
+      <h3 id="ocr-title">Leer kWh</h3>
+      <button class="link-btn" data-act="ocr-run" id="ocr-run-btn" style="font-weight:600">Leer</button>
     </div>
+    <div class="small muted">Arrastra un recuadro sobre la pantalla del cargador o solo sobre el número de kWh. La foto no se guarda: se descarta al cerrar.</div>
+    <div class="crop-wrap"><canvas id="ocr-canvas" width="0" height="0"></canvas></div>
+    <div id="ocr-status" role="status"></div>
+    <div id="ocr-results"></div>
   </div>
 </div>
 
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
 /* ============================================================
@@ -348,10 +390,35 @@ function fail(e){ console.error(e); toast("No se pudo guardar: "+(e.code||e.mess
 function linkFor(q){ return location.origin+location.pathname+q; }
 async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast("Enlace copiado"); }catch(e){ prompt("Copia el enlace:",t); } }
 
+/* ---------- íconos ---------- */
+const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  edit: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
+  trash: svg('<path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>'),
+  share: svg('<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/>'),
+  link: svg('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'),
+  check: svg('<circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.5 2.5L16 9.5"/>'),
+};
+// batería con el % al iniciar; en verde con rayo mientras la carga está en curso
+function batt(pct, charging){
+  const has = pct!=null && pct!=="";
+  const w = has ? Math.max(1.5, 22*Math.min(100,Math.max(0,+pct))/100) : 0;
+  const label = has ? `${pct}% al iniciar` : "Sin % de inicio";
+  return `<svg class="batt${charging?" charging":""}" viewBox="0 0 34 18" role="img" aria-label="${label}${charging?", cargando":""}">
+    <rect x="1" y="1.5" width="28" height="15" rx="4" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".6"/>
+    <rect x="30.5" y="6" width="2" height="6" rx="1" fill="currentColor" opacity=".6"/>
+    <rect class="lvl" x="4" y="4.5" width="${w}" height="9" rx="2"/>
+    ${charging?'<path d="M16.5 3 11 10h3.5l-1 5 5.5-7H15.5z" fill="var(--cell)" stroke="currentColor" stroke-width=".8" stroke-linejoin="round"/>':""}
+  </svg>`;
+}
+const kwhCell = n => `<div class="kwh">${kwhFmt(n)} <small>kWh</small></div>`;
+
 /* ---------- vistas ---------- */
+const VIEW_TITLES={cargas:"Cargas",liquidar:"Liquidar",pagos:"Pagos",ajustes:"Ajustes",estado:"Estado de cuenta"};
 function switchView(v){
   document.querySelectorAll(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
-  document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
+  document.querySelectorAll("nav.tabs button").forEach(b=>{const on=b.dataset.view===v; b.classList.toggle("active",on); if(on)b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current");});
+  $("#view-title").textContent = v==="estado"&&RO_LIQ ? "Liquidación" : VIEW_TITLES[v];
   window.scrollTo({top:0});
 }
 
@@ -375,9 +442,10 @@ function renderCargas(){
   $("#curso-card").hidden=!curso.length;
   $("#curso-list").innerHTML = curso.map(c=>`
     <div class="item">
-      <div class="main"><div class="t1">${fmtDate(c.fecha)} <span class="badge warn">En curso</span></div><div class="t2">${escapeHtml(cargaLine(c)||"Sin datos de inicio")}</div></div>
+      ${batt(c.pct,true)}
+      <div class="main"><div class="t1">${fmtDate(c.fecha)} <span class="badge live">Cargando</span></div><div class="t2">${escapeHtml(cargaLine(c)||"Sin datos de inicio")}</div></div>
       <button class="btn sm" data-act="finish-carga" data-id="${c.id}">Finalizar</button>
-      <button class="icon-btn" data-act="del-carga" data-id="${c.id}" title="Eliminar">✕</button>
+      <button class="icon-btn del" data-act="del-carga" data-id="${c.id}" aria-label="Eliminar carga del ${fmtDate(c.fecha)}">${ICON.trash}</button>
     </div>`).join("");
   if(!editingId) updateSaveLabel();
   const pend=pendientes();
@@ -386,16 +454,16 @@ function renderCargas(){
   $("#pend-total").textContent = pend.length ? `${kwhFmt(total)} kWh${tarifa?" · "+money(total*tarifa):""}` : "";
   $("#pend-list").innerHTML = pend.length ? [...pend].reverse().map(c=>`
     <div class="item">
+      ${batt(c.pct,false)}
       <div class="main"><div class="t1">${fmtDate(c.fecha)}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div>
-      <div class="kwh">${kwhFmt(c.kwh)} kWh</div>
-      <button class="icon-btn" data-act="edit-carga" data-id="${c.id}" title="Editar">✎</button>
-      <button class="icon-btn" data-act="del-carga" data-id="${c.id}" title="Eliminar">✕</button>
-    </div>`).join("") : `<div class="empty">No hay cargas pendientes.</div>`;
+      ${kwhCell(c.kwh)}
+      <button class="icon-btn" data-act="edit-carga" data-id="${c.id}" aria-label="Editar carga del ${fmtDate(c.fecha)}">${ICON.edit}</button>
+    </div>`).join("") : `<div class="empty">Nada por liquidar. Las cargas finalizadas aparecen aquí.</div>`;
   const done=state.cargas.filter(c=>c.liqId).sort(byFecha).reverse().slice(0,8);
   $("#done-list").innerHTML = done.length ? done.map(c=>{
     const l=state.liqs.find(x=>x.id===c.liqId);
     const b=l&&l.pagada?`<span class="badge ok">Pagada</span>`:`<span class="badge warn">Por pagar</span>`;
-    return `<div class="item"><div class="main"><div class="t1">${fmtDate(c.fecha)} ${b}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div><div class="kwh">${kwhFmt(c.kwh)} kWh</div></div>`;
+    return `<div class="item">${batt(c.pct,false)}<div class="main"><div class="t1">${fmtDate(c.fecha)} ${b}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div>${kwhCell(c.kwh)}</div>`;
   }).join("") : `<div class="empty">Todavía no hay liquidaciones.</div>`;
 }
 
@@ -403,11 +471,11 @@ function selectedPend(){ return pendientes().filter(c=>selection[c.id]!==false);
 function renderLiquidar(){
   const pend=pendientes();
   $("#liq-sel-list").innerHTML = pend.length ? pend.map(c=>`
-    <label class="item" style="cursor:pointer">
-      <input type="checkbox" data-sel="${c.id}" ${selection[c.id]!==false?"checked":""}>
+    <label class="item">
+      <input type="checkbox" data-sel="${c.id}" ${selection[c.id]!==false?"checked":""} aria-label="Incluir carga del ${fmtDate(c.fecha)}">
       <div class="main"><div class="t1">${fmtDate(c.fecha)}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div>
-      <div class="kwh">${kwhFmt(c.kwh)} kWh</div>
-    </label>`).join("") : `<div class="empty">No hay cargas pendientes por liquidar.</div>`;
+      ${kwhCell(c.kwh)}
+    </label>`).join("") : `<div class="empty">No hay cargas finalizadas por liquidar.</div>`;
   const tin=$("#l-tarifa");
   if(document.activeElement!==tin && !tin.dataset.touched) tin.value = state.config.tarifa || "";
   updateLiqSummary();
@@ -433,30 +501,28 @@ function liqCard(l, editable, open){
   const badge = l.pagada ? `<span class="badge ok">Pagada ${fmtDate(l.fechaPago)}</span>` : `<span class="badge warn">Por pagar</span>`;
   const ref_ = l.pagada && l.referencia ? ` · Ref. ${escapeHtml(l.referencia)}` : "";
   let actions = `<div class="btn-row">
-      <button class="btn sm" data-act="share-img" data-id="${l.id}">📤 Compartir imagen</button>
-      ${editable?`<button class="btn ghost sm" data-act="copy-liq" data-id="${l.id}">🔗 Enlace</button>`:""}
+      <button class="btn sm" data-act="share-img" data-id="${l.id}">${ICON.share}Compartir</button>
+      ${editable?`<button class="btn ghost sm" data-act="copy-liq" data-id="${l.id}">${ICON.link}Copiar enlace</button>`:""}
     </div>`;
   if(editable){
     actions += l.pagada
       ? `<div class="btn-row"><button class="btn ghost sm" data-act="unpay" data-id="${l.id}">Marcar como no pagada</button></div>`
       : `<div class="pay-form" id="pf-${l.id}" hidden>
-           <div class="row2">
-             <div><label class="f" for="pf-date-${l.id}">Fecha de pago</label><input type="date" id="pf-date-${l.id}" value="${today()}"></div>
-             <div><label class="f" for="pf-ref-${l.id}">Referencia (opcional)</label><input type="text" id="pf-ref-${l.id}" placeholder="N.º transferencia"></div>
-           </div>
+           <div class="frow"><label for="pf-date-${l.id}">Fecha de pago</label><input type="date" id="pf-date-${l.id}" value="${today()}"></div>
+           <div class="frow"><label for="pf-ref-${l.id}">Referencia</label><input type="text" id="pf-ref-${l.id}" placeholder="Opcional"></div>
            <div class="btn-row"><button class="btn sm" data-act="confirm-pay" data-id="${l.id}">Confirmar pago</button></div>
          </div>
          <div class="btn-row">
-           <button class="btn ghost sm" data-act="pay" data-id="${l.id}">✅ Registrar pago</button>
-           <button class="btn danger sm" data-act="del-liq" data-id="${l.id}">Deshacer liquidación</button>
+           <button class="btn ghost sm" data-act="pay" data-id="${l.id}">${ICON.check}Registrar pago</button>
+           <button class="btn danger sm" data-act="del-liq" data-id="${l.id}" aria-label="Deshacer liquidación">Deshacer</button>
          </div>`;
   }
   return `<div class="liq">
     <div class="liq-head">
-      <div><div style="font-weight:800">${periodo(l.detalle)}</div><div style="margin-top:4px">${badge}</div></div>
+      <div><div class="per">${periodo(l.detalle)}</div><div style="margin-top:6px">${badge}</div></div>
       <div class="val">${money(l.valor)}</div>
     </div>
-    <div class="liq-meta">${(l.detalle||[]).length} cargas · ${kwhFmt(l.kwhTotal)} kWh × ${money(l.tarifa)}/kWh${ref_}</div>
+    <div class="liq-meta">${(l.detalle||[]).length} carga${(l.detalle||[]).length===1?"":"s"} · ${kwhFmt(l.kwhTotal)} kWh × ${money(l.tarifa)}/kWh${ref_}</div>
     <details ${open?"open":""}><summary>Ver detalle</summary>${liqTable(l)}</details>
     ${actions}
   </div>`;
@@ -466,7 +532,7 @@ function renderPagos(){
   $("#p-total").textContent=money(unpaid.reduce((s,l)=>s+(l.valor||0),0));
   $("#p-sub").textContent = unpaid.length ? `${unpaid.length} liquidación${unpaid.length>1?"es":""} por pagar` : "Todo al día";
   const openPf = [...document.querySelectorAll(".pay-form:not([hidden])")].map(e=>e.id);
-  $("#liq-list").innerHTML = state.liqs.length ? state.liqs.map(l=>liqCard(l,true,false)).join("") : `<div class="empty">Aún no has creado liquidaciones.</div>`;
+  $("#liq-list").innerHTML = state.liqs.length ? state.liqs.map(l=>liqCard(l,true,false)).join("") : `<div class="card"><div class="empty">Aún no hay liquidaciones. Créalas en Liquidar.</div></div>`;
   openPf.forEach(id=>{const e=document.getElementById(id); if(e)e.hidden=false;});
 }
 
@@ -482,21 +548,21 @@ function renderEstado(){
   const v=$("#view-estado");
   if(RO_LIQ){
     const l=state.liqs.find(x=>x.id===RO_LIQ);
-    v.innerHTML = l ? `<div class="card"><h2>Liquidación · ${escapeHtml(state.config.proveedor||"")}</h2>${liqCard(l,false,true)}</div>`
-                    : `<div class="card"><div class="empty">${ready?"Esta liquidación no existe o fue eliminada.":"Cargando…"}</div></div>`;
+    v.innerHTML = l ? `<h2 class="grp-h">${escapeHtml(state.config.proveedor?"Pago a "+state.config.proveedor:"Liquidación")}</h2>${liqCard(l,false,true)}`
+                    : `<div class="card" style="margin-top:16px"><div class="empty">${ready?"Esta liquidación no existe o fue eliminada.":"Cargando…"}</div></div>`;
     return;
   }
   const unpaid=state.liqs.filter(l=>!l.pagada);
   const pend=pendientes(); const pk=round2(pend.reduce((s,c)=>s+(c.kwh||0),0));
   const tarifa=Number(state.config.tarifa)||0;
   v.innerHTML = `
-    <div class="card">
-      <div class="hero"><div><div class="label">Pendiente de pago</div><div class="sub">${unpaid.length?`${unpaid.length} liquidación${unpaid.length>1?"es":""}`:"Todo al día"}</div></div><div class="amount">${money(unpaid.reduce((s,l)=>s+(l.valor||0),0))}</div></div>
+    <div class="card" style="margin-top:16px">
+      <div class="hero"><div class="label">Pendiente de pago</div><div class="amount">${money(unpaid.reduce((s,l)=>s+(l.valor||0),0))}</div><div class="sub">${unpaid.length?`${unpaid.length} liquidación${unpaid.length>1?"es":""} por pagar`:"Todo al día"}</div></div>
       <div class="divider"></div>
-      <div class="small muted">Cargas aún sin liquidar: <b class="num">${pend.length}</b> · <b class="num">${kwhFmt(pk)} kWh</b>${tarifa?` (≈ ${money(pk*tarifa)})`:""}${enCurso().length?` · ${enCurso().length} en curso`:""}</div>
+      <div class="small muted" style="padding:12px 16px">Cargas aún sin liquidar: <b class="num">${pend.length}</b> · <b class="num">${kwhFmt(pk)} kWh</b>${tarifa?` (≈ ${money(pk*tarifa)})`:""}${enCurso().length?` · ${enCurso().length} en curso`:""}</div>
     </div>
-    ${pend.length?`<div class="card"><h2>Cargas sin liquidar</h2>${pend.map(c=>`<div class="item"><div class="main"><div class="t1">${fmtDate(c.fecha)}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div><div class="kwh">${kwhFmt(c.kwh)} kWh</div></div>`).join("")}</div>`:""}
-    <div class="card"><h2>Liquidaciones</h2>${state.liqs.length?state.liqs.map(l=>liqCard(l,false,false)).join(""):`<div class="empty">Sin liquidaciones.</div>`}</div>`;
+    ${pend.length?`<h2 class="grp-h">Cargas sin liquidar</h2><div class="card">${pend.map(c=>`<div class="item">${batt(c.pct,false)}<div class="main"><div class="t1">${fmtDate(c.fecha)}</div><div class="t2">${escapeHtml(cargaLine(c))}</div></div>${kwhCell(c.kwh)}</div>`).join("")}</div>`:""}
+    <h2 class="grp-h">Liquidaciones</h2>${state.liqs.length?state.liqs.map(l=>liqCard(l,false,false)).join(""):`<div class="card"><div class="empty">Sin liquidaciones.</div></div>`}`;
 }
 
 /* ---------- acciones: cargas ---------- */
@@ -512,6 +578,7 @@ function setFormMode(mode,title){
   $("#form-title").textContent=title;
   $("#form-hint").hidden = mode!=="new";
   $("#cancel-edit-btn").hidden = mode==="new";
+  $("#del-edit-btn").hidden = mode!=="edit";
   updateSaveLabel();
 }
 function resetForm(){
@@ -580,7 +647,6 @@ async function createLiq(){
   if(!sel.length){toast("Selecciona al menos una carga");return;}
   if(!(tarifa>0)){toast("Escribe la tarifa por kWh");return;}
   const liq=buildLiq(sel,tarifa);
-  if(!confirm(`Crear liquidación de ${sel.length} cargas: ${kwhFmt(liq.kwhTotal)} kWh × ${money(tarifa)} = ${money(liq.valor)}`))return;
   const id=push(ref(db,`${BASE}/liquidaciones`)).key;
   const upd={[`liquidaciones/${id}`]:liq};
   sel.forEach(c=>upd[`cargas/${c.id}/liqId`]=id);
@@ -589,7 +655,7 @@ async function createLiq(){
     await update(ref(db,BASE),upd);
     sel.forEach(c=>delete selection[c.id]);
     delete $("#l-tarifa").dataset.touched;
-    toast("Liquidación creada"); switchView("pagos");
+    toast(`Liquidación creada: ${money(liq.valor)}`); switchView("pagos");
   }catch(e){fail(e);}
 }
 async function confirmPay(id){
@@ -598,7 +664,7 @@ async function confirmPay(id){
   try{ await update(ref(db,`${BASE}/liquidaciones/${id}`),{pagada:true,fechaPago:fecha,referencia}); toast("Pago registrado"); }catch(e){fail(e);}
 }
 async function unpay(id){
-  if(!needDb()||!confirm("¿Marcar esta liquidación como no pagada?"))return;
+  if(!needDb())return;
   try{ await update(ref(db,`${BASE}/liquidaciones/${id}`),{pagada:false,fechaPago:null,referencia:null}); }catch(e){fail(e);}
 }
 async function delLiq(id){
@@ -930,6 +996,7 @@ function initUI(){
     else if(a==="cancel-edit")resetForm();
     else if(a==="edit-carga")editCarga(id);
     else if(a==="finish-carga")finishCarga(id);
+    else if(a==="del-editing"&&editingId)delCarga(editingId);
     else if(a==="del-carga")delCarga(id);
     else if(a==="photo")$("#photo-input").click();
     else if(a==="ocr-run")runOcr();
