@@ -678,54 +678,72 @@ async function delLiq(id){
 
 /* ---------- imagen para compartir ---------- */
 function drawStatement(l){
+  // Mismo lenguaje visual de la app (modo claro): fondo agrupado, tarjetas blancas,
+  // números redondeados, naranja solo para "Pendiente".
   const det=[...(l.detalle||[])].sort(byFecha);
-  const W=1080, P=64, rowH=62;
-  const H=330 + 70 + det.length*rowH + 70 + 330;
+  const C={bg:"#F2F2F7",cell:"#FFFFFF",label:"#000000",sec:"#6C6C70",sep:"#E3E3E8",accent:"#1A7F45",pending:"#B25000",pendTint:"#FFF1E5",fill:"#EBEBF0"};
+  const F='system-ui,-apple-system,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+  const R='ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+  const W=1080, P=56, IN=40, rowH=112;
+  const heroH=330, listTop=300+heroH+110;
+  const H=listTop + det.length*rowH + 104 + 150;
   const c=document.createElement("canvas"); c.width=W; c.height=H;
   const x=c.getContext("2d");
-  const F='system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
-  x.fillStyle="#F5F8F6"; x.fillRect(0,0,W,H);
-  const g=x.createLinearGradient(0,0,W,300); g.addColorStop(0,"#1E6B45"); g.addColorStop(1,"#134C30");
-  x.fillStyle=g; x.fillRect(0,0,W,290);
-  x.fillStyle="#BFE4CF"; x.font=`800 26px ${F}`; x.fillText("ESTADO DE CUENTA · CARGAS ⚡",P,84);
-  x.fillStyle="#fff"; x.font=`800 54px ${F}`; x.fillText(state.config.titulo||"Cargas",P,156);
-  x.font=`600 32px ${F}`; x.fillStyle="#E4F3EA"; x.fillText(`Periodo: ${periodo(det)}`,P,214);
-  x.font=`600 26px ${F}`; x.fillStyle="#BFE4CF"; x.fillText(`Liquidación del ${fmtDate(l.creada)}`,P,256);
+  const text=(t,px,py,font,color,align="left")=>{x.font=font;x.fillStyle=color;x.textAlign=align;x.fillText(t,px,py);x.textAlign="left";};
+  x.fillStyle=C.bg; x.fillRect(0,0,W,H);
 
-  let y=360;
-  const cols=[P, P+250, P+430, P+560, W-P];
-  x.font=`800 22px ${F}`; x.fillStyle="#5A6B62";
-  ["FECHA","INICIO","% INICIAL","FIN"].forEach((t,i)=>x.fillText(t,cols[i],y));
-  x.textAlign="right"; x.fillText("KWH",cols[4],y); x.textAlign="left";
-  y+=22; x.fillStyle="#D5DFD9"; x.fillRect(P,y,W-2*P,2); y+=10;
+  // encabezado
+  text("Estado de cuenta",P,92,`500 30px ${F}`,C.sec);
+  text(state.config.titulo||"Cargas",P,166,`700 64px ${F}`,C.label);
+  text(`Periodo ${periodo(det)}`,P,222,`400 32px ${F}`,C.sec);
+
+  // tarjeta del valor
+  let y=270;
+  x.fillStyle=C.cell; roundRect(x,P,y,W-2*P,heroH,32); x.fill();
+  text("Valor a pagar",P+IN,y+70,`400 30px ${F}`,C.sec);
+  text(money(l.valor),P+IN,y+176,`700 104px ${R}`,C.label);
+  text(`${kwhFmt(l.kwhTotal)} kWh × ${money(l.tarifa)} por kWh`,P+IN,y+238,`400 30px ${F}`,C.sec);
+  // estado
+  const pill = l.pagada ? {t:`✓ Pagado el ${fmtDate(l.fechaPago)}`,fg:C.sec,bg:C.fill} : {t:"Pendiente de pago",fg:C.pending,bg:C.pendTint};
+  x.font=`600 28px ${F}`; const pw=x.measureText(pill.t).width+44;
+  x.fillStyle=pill.bg; roundRect(x,P+IN,y+262,pw,48,24); x.fill();
+  text(pill.t,P+IN+22,y+296,`600 28px ${F}`,pill.fg);
+  if(l.pagada&&l.referencia) text(`Ref. ${l.referencia}`,P+IN+pw+20,y+296,`400 28px ${F}`,C.sec);
+
+  // lista de cargas
+  y=listTop-30;
+  text(`${det.length} carga${det.length===1?"":"s"}`,P+IN/2,y,`400 28px ${F}`,C.sec);
+  y=listTop;
+  const listH=det.length*rowH+104;
+  x.fillStyle=C.cell; roundRect(x,P,y,W-2*P,listH,32); x.fill();
   det.forEach((d,i)=>{
-    if(i%2===0){x.fillStyle="#EAF1ED";x.fillRect(P-12,y,W-2*P+24,rowH);}
-    x.fillStyle="#122019"; x.font=`600 30px ${F}`;
-    const ty=y+rowH/2+11;
-    x.fillText(fmtDate(d.fecha),cols[0],ty);
-    x.fillText(d.hi||"—",cols[1],ty);
-    x.fillText(d.pct!=null&&d.pct!==""?d.pct+"%":"—",cols[2],ty);
-    x.fillText(d.hf||"—",cols[3],ty);
-    x.textAlign="right"; x.font=`700 30px ui-monospace,Menlo,Consolas,monospace`; x.fillText(kwhFmt(d.kwh),cols[4],ty); x.textAlign="left";
-    y+=rowH;
+    const top=y+i*rowH;
+    if(i>0){ x.fillStyle=C.sep; x.fillRect(P+IN+92,top,W-2*P-IN-92,2); }
+    drawBatt(x,P+IN,top+rowH/2-16,d.pct,C);
+    text(fmtDate(d.fecha),P+IN+92,top+50,`500 34px ${F}`,C.label);
+    const sub=[d.hi?(d.hf?`${d.hi} → ${d.hf}`:`inicio ${d.hi}`):null, d.pct!=null&&d.pct!==""?`${d.pct}% al iniciar`:null].filter(Boolean).join(" · ");
+    text(sub||"—",P+IN+92,top+88,`400 28px ${F}`,C.sec);
+    x.font=`400 26px ${F}`; const uw=x.measureText(" kWh").width;
+    text(" kWh",W-P-IN,top+70,`400 26px ${F}`,C.sec,"right");
+    text(kwhFmt(d.kwh),W-P-IN-uw,top+70,`600 38px ${R}`,C.label,"right");
   });
-  y+=8; x.fillStyle="#122019"; x.fillRect(P,y,W-2*P,3); y+=50;
-  x.font=`800 32px ${F}`; x.fillText("Total kWh",P,y);
-  x.textAlign="right"; x.font=`800 32px ui-monospace,Menlo,Consolas,monospace`; x.fillText(kwhFmt(l.kwhTotal),W-P,y); x.textAlign="left";
-  y+=50; x.font=`600 28px ${F}`; x.fillStyle="#5A6B62"; x.fillText("Tarifa por kWh",P,y);
-  x.textAlign="right"; x.fillText(money(l.tarifa),W-P,y); x.textAlign="left";
+  const ty=y+det.length*rowH;
+  x.fillStyle=C.sep; x.fillRect(P,ty,W-2*P,2);
+  text("Total",P+IN,ty+66,`600 34px ${F}`,C.label);
+  x.font=`400 26px ${F}`; const uw=x.measureText(" kWh").width;
+  text(" kWh",W-P-IN,ty+66,`400 26px ${F}`,C.sec,"right");
+  text(kwhFmt(l.kwhTotal),W-P-IN-uw,ty+66,`700 40px ${R}`,C.label,"right");
 
-  y+=40; x.fillStyle="#fff"; roundRect(x,P-12,y,W-2*P+24,180,24); x.fill();
-  x.strokeStyle="#D5DFD9"; x.lineWidth=2; x.stroke();
-  x.fillStyle="#5A6B62"; x.font=`800 24px ${F}`; x.fillText("VALOR A PAGAR",P+16,y+52);
-  x.fillStyle="#134C30"; x.font=`800 72px ui-monospace,Menlo,Consolas,monospace`; x.fillText(money(l.valor),P+16,y+138);
-  x.textAlign="right";
-  if(l.pagada){ x.fillStyle="#2E7D4F"; x.font=`800 34px ${F}`; x.fillText("✔ PAGADO",W-P-16,y+70);
-    x.font=`600 24px ${F}`; x.fillText(fmtDate(l.fechaPago)+(l.referencia?` · Ref. ${l.referencia}`:""),W-P-16,y+110); }
-  else { x.fillStyle="#B7791F"; x.font=`800 34px ${F}`; x.fillText("PENDIENTE",W-P-16,y+70); }
-  x.textAlign="left";
-  x.fillStyle="#8A9A92"; x.font=`500 22px ${F}`; x.fillText(`${det.length} cargas · Generado el ${fmtDate(today())}`,P,H-40);
+  text(`Liquidación del ${fmtDate(l.creada)} · Generado el ${fmtDate(today())}`,P+IN/2,H-56,`400 26px ${F}`,C.sec);
   return c;
+}
+// batería con el % al iniciar, igual que en la app
+function drawBatt(x,bx,by,pct,C){
+  const has=pct!=null&&pct!=="";
+  x.strokeStyle="#AEAEB2"; x.lineWidth=3;
+  roundRect(x,bx,by,56,32,9); x.stroke();
+  x.fillStyle="#AEAEB2"; roundRect(x,bx+59,by+10,5,12,2.5); x.fill();
+  if(has){ const w=Math.max(4,46*Math.min(100,Math.max(0,+pct))/100); x.fillStyle="#3A3A3C"; roundRect(x,bx+5,by+5,w,22,5); x.fill(); }
 }
 function roundRect(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
 async function shareImg(id){
